@@ -15,8 +15,10 @@ class ScheduleRequest(BaseModel):
     truck_plate: str
     cargo_weight: float
     storage_type: str
+    cargo_type: str
+    pallet_quantity: int
     dock_id: int
-    schedule_time: str
+    schedule_date: str
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -47,8 +49,8 @@ def get_form():
             <h2>Agendamento de Carga / Doca</h2>
             <form id="scheduleForm">
                 <div class="form-group">
-                    <label for="supplier">Nome do Fornecedor / Transportadora:</label>
-                    <input type="text" id="supplier" required placeholder="Ex: Transportes Silva">
+                    <label for="supplier">Nome do Fornecedor:</label>
+                    <input type="text" id="supplier" required placeholder="Ex: Silva Alimentos">
                 </div>
                 <div class="form-group">
                     <label for="plate">Placa do Veículo:</label>
@@ -67,6 +69,17 @@ def get_form():
                     </select>
                 </div>
                 <div class="form-group">
+                    <label for="cargoType">Tipo da Carga:</label>
+                    <select id="cargoType" required onchange="togglePalletInput()">
+                        <option value="Paletizada">Paletizada</option>
+                        <option value="Batida">Batida (Carga Solta)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="palletGroup">
+                    <label for="palletQty">Quantidade de Paletes:</label>
+                    <input type="number" id="palletQty" value="0" min="0" placeholder="Ex: 26">
+                </div>
+                <div class="form-group">
                     <label for="dock">Doca de Descarregamento:</label>
                     <select id="dock" required>
                         <option value="1">Doca 01</option>
@@ -76,8 +89,8 @@ def get_form():
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="scheduleTime">Data e Hora da Chegada:</label>
-                    <input type="datetime-local" id="scheduleTime" required>
+                    <label for="scheduleDate">Data da Chegada:</label>
+                    <input type="date" id="scheduleDate" required>
                 </div>
                 <button type="submit">Confirmar Agendamento</button>
             </form>
@@ -85,6 +98,17 @@ def get_form():
         </div>
 
         <script>
+            function togglePalletInput() {
+                const cargoType = document.getElementById('cargoType').value;
+                const palletQty = document.getElementById('palletQty');
+                if (cargoType === 'Batida') {
+                    palletQty.value = 0;
+                    palletQty.disabled = true;
+                } else {
+                    palletQty.disabled = false;
+                }
+            }
+
             document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const msgDiv = document.getElementById('responseMsg');
@@ -95,8 +119,10 @@ def get_form():
                     truck_plate: document.getElementById('plate').value,
                     cargo_weight: parseFloat(document.getElementById('weight').value),
                     storage_type: document.getElementById('storage').value,
+                    cargo_type: document.getElementById('cargoType').value,
+                    pallet_quantity: parseInt(document.getElementById('palletQty').value || 0),
                     dock_id: parseInt(document.getElementById('dock').value),
-                    schedule_time: document.getElementById('scheduleTime').value
+                    schedule_date: document.getElementById('scheduleDate').value
                 };
 
                 try {
@@ -134,16 +160,21 @@ def create_schedule(req: ScheduleRequest):
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO schedules (supplier_name, truck_plate, cargo_weight, storage_type, dock_id, schedule_time)
-            VALUES (%s, %s, %s, %s, %s, %s);
+            INSERT INTO schedules (
+                supplier_name, truck_plate, cargo_weight, storage_type, 
+                cargo_type, pallet_quantity, dock_id, schedule_time
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
             """,
             (
                 req.supplier_name,
                 req.truck_plate,
                 req.cargo_weight,
                 req.storage_type,
+                req.cargo_type,
+                req.pallet_quantity,
                 req.dock_id,
-                req.schedule_time,
+                req.schedule_date,
             ),
         )
         conn.commit()
