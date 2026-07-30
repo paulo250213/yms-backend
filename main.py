@@ -55,7 +55,7 @@ class ScheduleRequest(BaseModel):
     access_code: str
 
 
-# --- TELA DE FORMULÁRIO (HOME) ---
+# --- TELA DE FORMULÁRIO (HOME - SEM O LINK DE CONSULTA) ---
 @app.get("/", response_class=HTMLResponse)
 def get_form():
     return """
@@ -75,8 +75,6 @@ def get_form():
             .uppercase-input { text-transform: uppercase; }
             button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
             button:hover { background-color: #0056b3; }
-            .nav-link { display: block; text-align: center; margin-top: 15px; color: #007bff; text-decoration: none; font-weight: bold; }
-            .nav-link:hover { text-decoration: underline; }
             .message { margin-top: 15px; padding: 15px; border-radius: 4px; display: none; text-align: center; font-size: 15px; line-height: 1.5; }
             .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
             .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
@@ -134,7 +132,6 @@ def get_form():
                 <button type="submit">Confirmar Agendamento</button>
             </form>
             <div id="responseMsg" class="message"></div>
-            <a href="/agendamentos" class="nav-link">📋 Ver Agendamentos Realizados</a>
         </div>
 
         <script>
