@@ -1,24 +1,22 @@
 import os
+import psycopg2
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-import psycopg2
-import random
-import string
 
 app = FastAPI(title="YMS - Agendamento de Entregas")
 
-# Pega a URL do banco configurada no Render
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Garante que a tabela exista com todas as colunas corretas ao iniciar a aplicação
+
 def init_db():
     if not DATABASE_URL:
         return
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TABLE IF NOT EXISTS schedules (
                 id SERIAL PRIMARY KEY,
                 supplier_name VARCHAR(100) NOT NULL,
@@ -33,14 +31,17 @@ def init_db():
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS cargo_type VARCHAR(20);
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS pallet_quantity INT DEFAULT 0;
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS access_code VARCHAR(20);
-        """)
+            """
+        )
         conn.commit()
         cur.close()
         conn.close()
     except Exception as e:
         print("Erro ao inicializar o banco:", e)
 
+
 init_db()
+
 
 class ScheduleRequest(BaseModel):
     supplier_name: str
@@ -53,6 +54,8 @@ class ScheduleRequest(BaseModel):
     schedule_date: str
     access_code: str
 
+
+# --- TELA DE FORMULÁRIO (HOME) ---
 @app.get("/", response_class=HTMLResponse)
 def get_form():
     return """
@@ -72,6 +75,8 @@ def get_form():
             .uppercase-input { text-transform: uppercase; }
             button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
             button:hover { background-color: #0056b3; }
+            .nav-link { display: block; text-align: center; margin-top: 15px; color: #007bff; text-decoration: none; font-weight: bold; }
+            .nav-link:hover { text-decoration: underline; }
             .message { margin-top: 15px; padding: 15px; border-radius: 4px; display: none; text-align: center; font-size: 15px; line-height: 1.5; }
             .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
             .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
@@ -129,6 +134,7 @@ def get_form():
                 <button type="submit">Confirmar Agendamento</button>
             </form>
             <div id="responseMsg" class="message"></div>
+            <a href="/agendamentos" class="nav-link">📋 Ver Agendamentos Realizados</a>
         </div>
 
         <script>
@@ -157,7 +163,6 @@ def get_form():
                 const msgDiv = document.getElementById('responseMsg');
                 msgDiv.style.display = 'none';
 
-                // Gera a senha automaticamente no momento do envio
                 const randomCode = generateRandomCode();
 
                 const payload = {
@@ -184,7 +189,7 @@ def get_form():
                         msgDiv.className = 'message success';
                         msgDiv.innerHTML = `Agendamento realizado com sucesso!<br>Sua senha de acesso é:<br><span class="code-highlight">${randomCode}</span>`;
                         document.getElementById('scheduleForm').reset();
-                        togglePalletInput(); // Restaura o campo de paletes
+                        togglePalletInput();
                     } else {
                         msgDiv.className = 'message error';
                         msgDiv.innerText = data.detail || 'Erro ao realizar agendamento.';
@@ -200,31 +205,191 @@ def get_form():
     </html>
     """
 
+
+# --- TELA DE CONSULTA DE AGENDAMENTOS ---
+@app.get("/agendamentos", response_class=HTMLResponse)
+def list_schedules_page():
+    return """
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>YMS - Consulta de Agendamentos</title>
+        <style>
+            body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+            .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 1100px; margin: 0 auto; }
+            h2 { color: #333; margin-top: 0; text-align: center; }
+            .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; }
+            .btn-group { display: flex; gap: 10px; }
+            .btn { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; text-decoration: none; font-weight: bold; cursor: pointer; display: inline-block; }
+            .btn:hover { background-color: #0056b3; }
+            .btn-pdf { background-color: #28a745; }
+            .btn-pdf:hover { background-color: #218838; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { padding: 10px; border: 1px solid #ddd; text-align: center; font-size: 13px; }
+            th { background-color: #f8f9fa; color: #333; font-weight: bold; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+            tr:hover { background-color: #f1f1f1; }
+            .code-badge { font-weight: bold; background: #e9ecef; padding: 4px 8px; border-radius: 4px; letter-spacing: 1px; color: #007bff; border: 1px solid #ced4da; }
+            .no-data { text-align: center; padding: 20px; color: #777; }
+
+            /* Estilos específicos para a impressão em PDF */
+            @media print {
+                body { background-color: #fff; padding: 0; }
+                .container { box-shadow: none; max-width: 100%; padding: 0; }
+                .no-print { display: none !important; }
+                h2 { margin-bottom: 15px; font-size: 20px; text-align: left; }
+                table { font-size: 11px; }
+                th, td { padding: 6px; }
+                .code-badge { border: none; background: transparent; color: #000; padding: 0; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="top-bar no-print">
+                <h2>Lista de Agendamentos Realizados</h2>
+                <div class="btn-group">
+                    <button class="btn btn-pdf" onclick="window.print()">📄 Exportar PDF / Imprimir</button>
+                    <a href="/" class="btn">➕ Novo Agendamento</a>
+                </div>
+            </div>
+
+            <!-- Título visível na impressão/PDF -->
+            <h2 class="print-only" style="display:none;">Relatório de Agendamentos YMS</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Senha</th>
+                        <th>Fornecedor</th>
+                        <th>Placa</th>
+                        <th>Peso (kg)</th>
+                        <th>Armazenamento</th>
+                        <th>Tipo Carga</th>
+                        <th>Paletes</th>
+                        <th>Doca</th>
+                        <th>Data Chegada</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="10" class="no-data">Carregando agendamentos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <script>
+            async function loadSchedules() {
+                try {
+                    const res = await fetch('/api/schedules');
+                    const data = await res.json();
+                    const tbody = document.getElementById('tableBody');
+                    tbody.innerHTML = '';
+
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="10" class="no-data">Nenhum agendamento encontrado.</td></tr>';
+                        return;
+                    }
+
+                    data.forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${row.id}</td>
+                            <td><span class="code-badge">${row.access_code || '-'}</span></td>
+                            <td><strong>${row.supplier_name}</strong></td>
+                            <td>${row.truck_plate}</td>
+                            <td>${row.cargo_weight}</td>
+                            <td>${row.storage_type}</td>
+                            <td>${row.cargo_type || '-'}</td>
+                            <td>${row.pallet_quantity}</td>
+                            <td>Doca 0${row.dock_id}</td>
+                            <td>${row.schedule_time}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } catch (err) {
+                    console.error(err);
+                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="10" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
+                }
+            }
+
+            window.onload = loadSchedules;
+        </script>
+    </body>
+    </html>
+    """
+
+
+# --- API PARA SALVAR AGENDAMENTO ---
 @app.post("/api/schedule")
 def create_schedule(req: ScheduleRequest):
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO schedules (
                 supplier_name, truck_plate, cargo_weight, storage_type, 
                 cargo_type, pallet_quantity, dock_id, schedule_time, access_code
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
-        """, (
-            req.supplier_name.upper(), 
-            req.truck_plate.upper(), 
-            req.cargo_weight, 
-            req.storage_type, 
-            req.cargo_type, 
-            req.pallet_quantity,
-            req.dock_id, 
-            req.schedule_date,
-            req.access_code
-        ))
+            """,
+            (
+                req.supplier_name.upper(),
+                req.truck_plate.upper(),
+                req.cargo_weight,
+                req.storage_type,
+                req.cargo_type,
+                req.pallet_quantity,
+                req.dock_id,
+                req.schedule_date,
+                req.access_code,
+            ),
+        )
         conn.commit()
         cur.close()
         conn.close()
         return {"status": "sucesso", "mensagem": "Agendamento registrado com sucesso!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- API PARA LISTAR OS AGENDAMENTOS EM JSON ---
+@app.get("/api/schedules")
+def list_schedules():
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, supplier_name, truck_plate, cargo_weight, storage_type, 
+                   cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), access_code
+            FROM schedules
+            ORDER BY id DESC;
+            """
+        )
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        result = []
+        for r in rows:
+            result.append(
+                {
+                    "id": r[0],
+                    "supplier_name": r[1],
+                    "truck_plate": r[2],
+                    "cargo_weight": r[3],
+                    "storage_type": r[4],
+                    "cargo_type": r[5],
+                    "pallet_quantity": r[6],
+                    "dock_id": r[7],
+                    "schedule_time": r[8],
+                    "access_code": r[9],
+                }
+            )
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
