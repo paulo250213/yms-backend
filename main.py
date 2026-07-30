@@ -37,6 +37,8 @@ def get_form():
             .form-group { margin-bottom: 15px; }
             label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
             input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+            /* Deixa a digitação automaticamente em maiúsculas na tela */
+            .uppercase-input { text-transform: uppercase; }
             button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
             button:hover { background-color: #0056b3; }
             .message { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; }
@@ -50,11 +52,11 @@ def get_form():
             <form id="scheduleForm">
                 <div class="form-group">
                     <label for="supplier">Nome do Fornecedor:</label>
-                    <input type="text" id="supplier" required placeholder="Ex: Silva Alimentos">
+                    <input type="text" id="supplier" class="uppercase-input" required placeholder="EX: SILVA ALIMENTOS">
                 </div>
                 <div class="form-group">
                     <label for="plate">Placa do Veículo:</label>
-                    <input type="text" id="plate" required placeholder="Ex: ABC1D23">
+                    <input type="text" id="plate" class="uppercase-input" required placeholder="EX: ABC1D23">
                 </div>
                 <div class="form-group">
                     <label for="weight">Peso da Carga (kg):</label>
@@ -115,8 +117,8 @@ def get_form():
                 msgDiv.style.display = 'none';
 
                 const payload = {
-                    supplier_name: document.getElementById('supplier').value,
-                    truck_plate: document.getElementById('plate').value,
+                    supplier_name: document.getElementById('supplier').value.toUpperCase(),
+                    truck_plate: document.getElementById('plate').value.toUpperCase(),
                     cargo_weight: parseFloat(document.getElementById('weight').value),
                     storage_type: document.getElementById('storage').value,
                     cargo_type: document.getElementById('cargoType').value,
@@ -167,8 +169,8 @@ def create_schedule(req: ScheduleRequest):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
             """,
             (
-                req.supplier_name,
-                req.truck_plate,
+                req.supplier_name.upper(),
+                req.truck_plate.upper(),
                 req.cargo_weight,
                 req.storage_type,
                 req.cargo_type,
