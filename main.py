@@ -1,10 +1,10 @@
 import os
 import psycopg2
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
-app = FastAPI(title="YMS - Agendamento de Entregas")
+app = FastAPI(title="DINIZ - YMS Agendamento de Entregas")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -55,7 +55,20 @@ class ScheduleRequest(BaseModel):
     access_code: str
 
 
-# --- TELA DE FORMULÁRIO (HOME - SEM O LINK DE CONSULTA) ---
+# --- ROTA PARA DISPONIBILIZAR O DOWNLOAD DO MANUAL EM PDF ---
+@app.get("/manual.pdf")
+def get_manual():
+    pdf_path = "manual.pdf"
+    if os.path.exists(pdf_path):
+        return FileResponse(pdf_path, media_type="application/pdf", filename="Manual_do_Fornecedor_Diniz.pdf")
+    # Caso o arquivo esteja com o nome original salvo no projeto:
+    elif os.path.exists("Manual do Fornecedor Diniz Foods - Versão Corrigida.pdf"):
+        return FileResponse("Manual do Fornecedor Diniz Foods - Versão Corrigida.pdf", media_type="application/pdf", filename="Manual_do_Fornecedor_Diniz.pdf")
+    else:
+        raise HTTPException(status_code=404, detail="Manual em PDF não encontrado no servidor.")
+
+
+# --- TELA DE FORMULÁRIO (HOME) ---
 @app.get("/", response_class=HTMLResponse)
 def get_form():
     return """
@@ -64,74 +77,248 @@ def get_form():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>YMS - Agendamento de Entregas</title>
+        <title>Diniz Alimentos - Agendamento de Carga</title>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
-            body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; }
-            .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 480px; }
-            h2 { color: #333; margin-top: 0; text-align: center; }
-            .form-group { margin-bottom: 15px; }
-            label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
-            input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+            * { box-sizing: border-box; }
+            body { 
+                font-family: 'Poppins', sans-serif; 
+                background: linear-gradient(135deg, #0b192c 0%, #1e3e62 100%); 
+                min-height: 100vh;
+                margin: 0; 
+                padding: 20px 10px; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+            }
+            .card { 
+                background: #ffffff; 
+                border-radius: 12px; 
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
+                width: 100%; 
+                max-width: 520px; 
+                overflow: hidden;
+            }
+            .header-banner {
+                background: linear-gradient(90deg, #0b192c 0%, #1e3e62 100%);
+                padding: 25px 20px;
+                text-align: center;
+                border-bottom: 4px solid #ffc107;
+                color: white;
+            }
+            .logo-icon {
+                font-size: 42px;
+                margin-bottom: 5px;
+                display: block;
+            }
+            .brand-title {
+                font-size: 22px;
+                font-weight: 700;
+                letter-spacing: 1px;
+                margin: 0;
+                color: #ffffff;
+            }
+            .brand-title span {
+                color: #ffc107;
+            }
+            .slogan {
+                font-size: 13px;
+                color: #ffc107;
+                font-weight: 600;
+                margin-top: 4px;
+                letter-spacing: 0.5px;
+            }
+            
+            /* BOX INFORMATIVO DO MANUAL E HORÁRIO */
+            .info-box {
+                background-color: #fff9e6;
+                border-left: 5px solid #ffc107;
+                padding: 15px 20px;
+                margin: 20px 30px 0 30px;
+                border-radius: 6px;
+            }
+            .info-box-title {
+                font-weight: 700;
+                color: #0b192c;
+                font-size: 14px;
+                margin-bottom: 6px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .info-box-text {
+                font-size: 12px;
+                color: #444;
+                line-height: 1.5;
+                margin-bottom: 10px;
+            }
+            .info-box-time {
+                font-weight: 700;
+                color: #b78103;
+                background: #fff0c2;
+                padding: 4px 8px;
+                border-radius: 4px;
+                display: inline-block;
+                margin-bottom: 10px;
+                font-size: 12px;
+            }
+            .btn-manual {
+                display: inline-block;
+                width: 100%;
+                text-align: center;
+                background-color: #0b192c;
+                color: #ffc107;
+                padding: 10px;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 700;
+                text-decoration: none;
+                transition: background 0.2s;
+            }
+            .btn-manual:hover {
+                background-color: #1e3e62;
+            }
+
+            .form-body {
+                padding: 20px 30px 25px 30px;
+            }
+            .form-group { 
+                margin-bottom: 18px; 
+            }
+            label { 
+                display: block; 
+                margin-bottom: 6px; 
+                font-weight: 600; 
+                color: #2b2b2b; 
+                font-size: 13px;
+            }
+            input, select { 
+                width: 100%; 
+                padding: 12px 14px; 
+                border: 1.5px solid #dcdfe6; 
+                border-radius: 6px; 
+                font-size: 14px;
+                font-family: inherit;
+                transition: border-color 0.2s;
+            }
+            input:focus, select:focus {
+                outline: none;
+                border-color: #0b192c;
+            }
             .uppercase-input { text-transform: uppercase; }
-            button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
-            button:hover { background-color: #0056b3; }
-            .message { margin-top: 15px; padding: 15px; border-radius: 4px; display: none; text-align: center; font-size: 15px; line-height: 1.5; }
-            .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-            .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-            .code-highlight { font-size: 20px; font-weight: bold; background: #fff; padding: 5px 10px; border-radius: 4px; display: inline-block; margin-top: 5px; border: 1px dashed #28a745; color: #155724; }
+            button.btn-submit { 
+                width: 100%; 
+                padding: 14px; 
+                background: linear-gradient(90deg, #ffc107 0%, #e0a800 100%); 
+                color: #0b192c; 
+                border: none; 
+                border-radius: 6px; 
+                font-size: 16px; 
+                cursor: pointer; 
+                font-weight: 700; 
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-top: 10px;
+                box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+                transition: transform 0.1s, box-shadow 0.2s;
+            }
+            button.btn-submit:hover { 
+                background: linear-gradient(90deg, #e0a800 0%, #c69500 100%); 
+                transform: translateY(-1px);
+            }
+            .message { 
+                margin-top: 20px; 
+                padding: 15px; 
+                border-radius: 6px; 
+                display: none; 
+                text-align: center; 
+                font-size: 14px; 
+                line-height: 1.5; 
+            }
+            .success { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+            .error { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+            .code-highlight { 
+                font-size: 22px; 
+                font-weight: 700; 
+                background: #ffffff; 
+                padding: 6px 14px; 
+                border-radius: 6px; 
+                display: inline-block; 
+                margin-top: 8px; 
+                border: 2px dashed #137333; 
+                color: #137333; 
+                letter-spacing: 2px;
+            }
         </style>
     </head>
     <body>
-        <div class="container">
-            <h2>Agendamento de Carga / Doca</h2>
-            <form id="scheduleForm">
-                <div class="form-group">
-                    <label for="supplier">Nome do Fornecedor:</label>
-                    <input type="text" id="supplier" class="uppercase-input" required placeholder="EX: SILVA ALIMENTOS">
+        <div class="card">
+            <div class="header-banner">
+                <span class="logo-icon">👨‍🍳</span>
+                <div class="brand-title">DINIZ <span>ALIMENTOS</span></div>
+                <div class="slogan">COM A DINIZ VOCÊ FAZ MAIS!</div>
+            </div>
+
+            <!-- QUADRO INFORMATIVO DE ORIENTAÇÃO AO FORNECEDOR -->
+            <div class="info-box">
+                <div class="info-box-title">📌 Informações Importantes</div>
+                <div class="info-box-time">⏰ Recebimento: Das 07:30 às 12:00</div>
+                <div class="info-box-text">
+                    Todas as normas operacionais, regras de conduta, EPIs e padrões de carga estão detalhados no nosso manual oficial.
                 </div>
-                <div class="form-group">
-                    <label for="plate">Placa do Veículo:</label>
-                    <input type="text" id="plate" class="uppercase-input" required placeholder="EX: ABC1D23">
-                </div>
-                <div class="form-group">
-                    <label for="weight">Peso da Carga (kg):</label>
-                    <input type="number" step="0.1" id="weight" required placeholder="Ex: 1500.50">
-                </div>
-                <div class="form-group">
-                    <label for="storage">Tipo de Armazenamento:</label>
-                    <select id="storage" required>
-                        <option value="Seco">Seco</option>
-                        <option value="Resfriado">Resfriado</option>
-                        <option value="Congelado">Congelado</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="cargoType">Tipo da Carga:</label>
-                    <select id="cargoType" required onchange="togglePalletInput()">
-                        <option value="Paletizada">Paletizada</option>
-                        <option value="Batida">Batida (Carga Solta)</option>
-                    </select>
-                </div>
-                <div class="form-group" id="palletGroup">
-                    <label for="palletQty">Quantidade de Paletes:</label>
-                    <input type="number" id="palletQty" value="0" min="0" placeholder="Ex: 26">
-                </div>
-                <div class="form-group">
-                    <label for="dock">Doca de Descarregamento:</label>
-                    <select id="dock" required>
-                        <option value="1">Doca 01</option>
-                        <option value="2">Doca 02</option>
-                        <option value="3">Doca 03</option>
-                        <option value="4">Doca 04</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="scheduleDate">Data da Chegada:</label>
-                    <input type="date" id="scheduleDate" required>
-                </div>
-                <button type="submit">Confirmar Agendamento</button>
-            </form>
-            <div id="responseMsg" class="message"></div>
+                <a href="/manual.pdf" target="_blank" class="btn-manual">📖 Visualizar Manual do Fornecedor (PDF)</a>
+            </div>
+            
+            <div class="form-body">
+                <form id="scheduleForm">
+                    <div class="form-group">
+                        <label for="supplier">NOME DO FORNECEDOR:</label>
+                        <input type="text" id="supplier" class="uppercase-input" required placeholder="Ex: SILVA ALIMENTOS LTDA">
+                    </div>
+                    <div class="form-group">
+                        <label for="plate">PLACA DO VEÍCULO:</label>
+                        <input type="text" id="plate" class="uppercase-input" required placeholder="Ex: ABC1D23">
+                    </div>
+                    <div class="form-group">
+                        <label for="weight">PESO DA CARGA (KG):</label>
+                        <input type="number" step="0.1" id="weight" required placeholder="Ex: 1500.50">
+                    </div>
+                    <div class="form-group">
+                        <label for="storage">TIPO DE ARMAZENAMENTO:</label>
+                        <select id="storage" required>
+                            <option value="Seco">Seco</option>
+                            <option value="Resfriado">Resfriado</option>
+                            <option value="Congelado">Congelado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cargoType">TIPO DA CARGA:</label>
+                        <select id="cargoType" required onchange="togglePalletInput()">
+                            <option value="Paletizada">Paletizada</option>
+                            <option value="Batida">Batida (Carga Solta)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="palletGroup">
+                        <label for="palletQty">QUANTIDADE DE PALETES:</label>
+                        <input type="number" id="palletQty" value="0" min="0" placeholder="Ex: 26">
+                    </div>
+                    <div class="form-group">
+                        <label for="dock">DOCA DE DESCARREGAMENTO:</label>
+                        <select id="dock" required>
+                            <option value="1">Doca 01</option>
+                            <option value="2">Doca 02</option>
+                            <option value="3">Doca 03</option>
+                            <option value="4">Doca 04</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="scheduleDate">DATA DA CHEGADA:</label>
+                        <input type="date" id="scheduleDate" required>
+                    </div>
+                    <button type="submit" class="btn-submit">Confirmar Agendamento</button>
+                </form>
+                <div id="responseMsg" class="message"></div>
+            </div>
         </div>
 
         <script>
@@ -212,46 +399,113 @@ def list_schedules_page():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>YMS - Consulta de Agendamentos</title>
+        <title>Diniz Alimentos - Gestão de Agendamentos</title>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
-            body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
-            .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 1150px; margin: 0 auto; }
-            h2 { color: #333; margin-top: 0; text-align: center; }
-            .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; }
+            * { box-sizing: border-box; }
+            body { 
+                font-family: 'Poppins', sans-serif; 
+                background-color: #f4f6f9; 
+                margin: 0; 
+                padding: 20px; 
+            }
+            .container { 
+                background: white; 
+                padding: 30px; 
+                border-radius: 12px; 
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+                max-width: 1200px; 
+                margin: 0 auto; 
+            }
+            .header-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-bottom: 3px solid #ffc107;
+                padding-bottom: 15px;
+                margin-bottom: 25px;
+            }
+            .brand-info {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .brand-info .icon { font-size: 32px; }
+            .brand-info h2 { margin: 0; color: #0b192c; font-size: 22px; }
+            .brand-info p { margin: 0; color: #666; font-size: 12px; font-weight: 600; }
+            
             .btn-group { display: flex; gap: 10px; }
-            .btn { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; text-decoration: none; font-weight: bold; cursor: pointer; display: inline-block; }
-            .btn:hover { background-color: #0056b3; }
-            .btn-pdf { background-color: #28a745; }
-            .btn-pdf:hover { background-color: #218838; }
-            .btn-delete { background-color: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
-            .btn-delete:hover { background-color: #c82333; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { padding: 10px; border: 1px solid #ddd; text-align: center; font-size: 13px; }
-            th { background-color: #f8f9fa; color: #333; font-weight: bold; }
-            tr:nth-child(even) { background-color: #f9f9f9; }
-            tr:hover { background-color: #f1f1f1; }
-            .code-badge { font-weight: bold; background: #e9ecef; padding: 4px 8px; border-radius: 4px; letter-spacing: 1px; color: #007bff; border: 1px solid #ced4da; }
-            .no-data { text-align: center; padding: 20px; color: #777; }
+            .btn { 
+                padding: 10px 18px; 
+                border-radius: 6px; 
+                text-decoration: none; 
+                font-weight: 600; 
+                cursor: pointer; 
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 13px;
+                border: none;
+            }
+            .btn-pdf { background-color: #0b192c; color: #ffc107; }
+            .btn-pdf:hover { background-color: #1e3e62; }
+            .btn-new { background-color: #ffc107; color: #0b192c; }
+            .btn-new:hover { background-color: #e0a800; }
+            
+            .btn-delete { 
+                background-color: #dc3545; 
+                color: white; 
+                border: none; 
+                padding: 6px 12px; 
+                border-radius: 4px; 
+                cursor: pointer; 
+                font-weight: 600; 
+                font-size: 12px; 
+            }
+            .btn-delete:hover { background-color: #bd2130; }
 
-            /* Estilos específicos para a impressão em PDF */
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { padding: 12px 10px; border: 1px solid #e9ecef; text-align: center; font-size: 13px; }
+            th { background-color: #0b192c; color: #ffffff; font-weight: 600; }
+            tr:nth-child(even) { background-color: #f8f9fa; }
+            tr:hover { background-color: #f1f3f5; }
+            
+            .code-badge { 
+                font-weight: 700; 
+                background: #eef2f5; 
+                padding: 4px 8px; 
+                border-radius: 4px; 
+                letter-spacing: 1px; 
+                color: #0b192c; 
+                border: 1px solid #ced4da; 
+            }
+            .no-data { text-align: center; padding: 30px; color: #777; }
+
+            /* Impressão em PDF */
             @media print {
                 body { background-color: #fff; padding: 0; }
                 .container { box-shadow: none; max-width: 100%; padding: 0; }
                 .no-print, .action-column { display: none !important; }
-                h2 { margin-bottom: 15px; font-size: 20px; text-align: left; }
+                .header-bar { border-bottom: 2px solid #000; padding-bottom: 10px; }
+                th { background-color: #eee !important; color: #000 !important; }
                 table { font-size: 11px; }
                 th, td { padding: 6px; }
-                .code-badge { border: none; background: transparent; color: #000; padding: 0; }
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <div class="top-bar no-print">
-                <h2>Lista de Agendamentos Realizados</h2>
+            <div class="header-bar no-print">
+                <div class="brand-info">
+                    <span class="icon">👨‍🍳</span>
+                    <div>
+                        <h2>DINIZ ALIMENTOS - Gestão de Agendamentos</h2>
+                        <p>COM A DINIZ VOCÊ FAZ MAIS!</p>
+                    </div>
+                </div>
                 <div class="btn-group">
                     <button class="btn btn-pdf" onclick="window.print()">📄 Exportar PDF / Imprimir</button>
-                    <a href="/" class="btn">➕ Novo Agendamento</a>
+                    <a href="/" class="btn btn-new">➕ Novo Agendamento</a>
                 </div>
             </div>
 
