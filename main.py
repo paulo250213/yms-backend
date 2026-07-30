@@ -14,6 +14,7 @@ class ScheduleRequest(BaseModel):
     supplier_name: str
     truck_plate: str
     cargo_weight: float
+    storage_type: str
     dock_id: int
     schedule_time: str
 
@@ -58,6 +59,14 @@ def get_form():
                     <input type="number" step="0.1" id="weight" required placeholder="Ex: 1500.50">
                 </div>
                 <div class="form-group">
+                    <label for="storage">Tipo de Armazenamento:</label>
+                    <select id="storage" required>
+                        <option value="Seco">Seco</option>
+                        <option value="Resfriado">Resfriado</option>
+                        <option value="Congelado">Congelado</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label for="dock">Doca de Descarregamento:</label>
                     <select id="dock" required>
                         <option value="1">Doca 01</option>
@@ -85,6 +94,7 @@ def get_form():
                     supplier_name: document.getElementById('supplier').value,
                     truck_plate: document.getElementById('plate').value,
                     cargo_weight: parseFloat(document.getElementById('weight').value),
+                    storage_type: document.getElementById('storage').value,
                     dock_id: parseInt(document.getElementById('dock').value),
                     schedule_time: document.getElementById('scheduleTime').value
                 };
@@ -124,13 +134,14 @@ def create_schedule(req: ScheduleRequest):
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO schedules (supplier_name, truck_plate, cargo_weight, dock_id, schedule_time)
-            VALUES (%s, %s, %s, %s, %s);
+            INSERT INTO schedules (supplier_name, truck_plate, cargo_weight, storage_type, dock_id, schedule_time)
+            VALUES (%s, %s, %s, %s, %s, %s);
             """,
             (
                 req.supplier_name,
                 req.truck_plate,
                 req.cargo_weight,
+                req.storage_type,
                 req.dock_id,
                 req.schedule_time,
             ),
