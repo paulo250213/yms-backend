@@ -61,7 +61,6 @@ def get_manual():
     pdf_path = "manual.pdf"
     if os.path.exists(pdf_path):
         return FileResponse(pdf_path, media_type="application/pdf", filename="Manual_do_Fornecedor_Diniz.pdf")
-    # Caso o arquivo esteja com o nome original salvo no projeto:
     elif os.path.exists("Manual do Fornecedor Diniz Foods - Versão Corrigida.pdf"):
         return FileResponse("Manual do Fornecedor Diniz Foods - Versão Corrigida.pdf", media_type="application/pdf", filename="Manual_do_Fornecedor_Diniz.pdf")
     else:
@@ -106,30 +105,11 @@ def get_form():
                 border-bottom: 4px solid #ffc107;
                 color: white;
             }
-            .logo-icon {
-                font-size: 42px;
-                margin-bottom: 5px;
-                display: block;
-            }
-            .brand-title {
-                font-size: 22px;
-                font-weight: 700;
-                letter-spacing: 1px;
-                margin: 0;
-                color: #ffffff;
-            }
-            .brand-title span {
-                color: #ffc107;
-            }
-            .slogan {
-                font-size: 13px;
-                color: #ffc107;
-                font-weight: 600;
-                margin-top: 4px;
-                letter-spacing: 0.5px;
-            }
+            .logo-icon { font-size: 42px; margin-bottom: 5px; display: block; }
+            .brand-title { font-size: 22px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
+            .brand-title span { color: #ffc107; }
+            .slogan { font-size: 13px; color: #ffc107; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px; }
             
-            /* BOX INFORMATIVO DO MANUAL E HORÁRIO */
             .info-box {
                 background-color: #fff9e6;
                 border-left: 5px solid #ffc107;
@@ -146,12 +126,7 @@ def get_form():
                 align-items: center;
                 gap: 6px;
             }
-            .info-box-text {
-                font-size: 12px;
-                color: #444;
-                line-height: 1.5;
-                margin-bottom: 10px;
-            }
+            .info-box-text { font-size: 12px; color: #444; line-height: 1.5; margin-bottom: 10px; }
             .info-box-time {
                 font-weight: 700;
                 color: #b78103;
@@ -175,23 +150,11 @@ def get_form():
                 text-decoration: none;
                 transition: background 0.2s;
             }
-            .btn-manual:hover {
-                background-color: #1e3e62;
-            }
+            .btn-manual:hover { background-color: #1e3e62; }
 
-            .form-body {
-                padding: 20px 30px 25px 30px;
-            }
-            .form-group { 
-                margin-bottom: 18px; 
-            }
-            label { 
-                display: block; 
-                margin-bottom: 6px; 
-                font-weight: 600; 
-                color: #2b2b2b; 
-                font-size: 13px;
-            }
+            .form-body { padding: 20px 30px 25px 30px; }
+            .form-group { margin-bottom: 18px; }
+            label { display: block; margin-bottom: 6px; font-weight: 600; color: #2b2b2b; font-size: 13px; }
             input, select { 
                 width: 100%; 
                 padding: 12px 14px; 
@@ -201,10 +164,7 @@ def get_form():
                 font-family: inherit;
                 transition: border-color 0.2s;
             }
-            input:focus, select:focus {
-                outline: none;
-                border-color: #0b192c;
-            }
+            input:focus, select:focus { outline: none; border-color: #0b192c; }
             .uppercase-input { text-transform: uppercase; }
             button.btn-submit { 
                 width: 100%; 
@@ -259,10 +219,9 @@ def get_form():
                 <div class="slogan">COM A DINIZ VOCÊ FAZ MAIS!</div>
             </div>
 
-            <!-- QUADRO INFORMATIVO DE ORIENTAÇÃO AO FORNECEDOR -->
             <div class="info-box">
                 <div class="info-box-title">📌 Informações Importantes</div>
-                <div class="info-box-time">⏰ Recebimento: Das 07:30 às 12:00</div>
+                <div class="info-box-time">⏰ Recebimento: Das 07:30 às 12:00 (Máx. 35 vagas/dia)</div>
                 <div class="info-box-text">
                     Todas as normas operacionais, regras de conduta, EPIs e padrões de carga estão detalhados no nosso manual oficial.
                 </div>
@@ -425,11 +384,7 @@ def list_schedules_page():
                 padding-bottom: 15px;
                 margin-bottom: 25px;
             }
-            .brand-info {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            }
+            .brand-info { display: flex; align-items: center; gap: 12px; }
             .brand-info .icon { font-size: 32px; }
             .brand-info h2 { margin: 0; color: #0b192c; font-size: 22px; }
             .brand-info p { margin: 0; color: #666; font-size: 12px; font-weight: 600; }
@@ -481,7 +436,6 @@ def list_schedules_page():
             }
             .no-data { text-align: center; padding: 30px; color: #777; }
 
-            /* Impressão em PDF */
             @media print {
                 body { background-color: #fff; padding: 0; }
                 .container { box-shadow: none; max-width: 100%; padding: 0; }
@@ -591,12 +545,30 @@ def list_schedules_page():
     """
 
 
-# --- API PARA SALVAR AGENDAMENTO ---
+# --- API PARA SALVAR AGENDAMENTO COM TRAVA DE 35 VAGAS/DIA ---
 @app.post("/api/schedule")
 def create_schedule(req: ScheduleRequest):
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
+
+        # 1. VERIFICA A QUANTIDADE DE AGENDAMENTOS NA DATA SELECIONADA
+        cur.execute(
+            "SELECT COUNT(*) FROM schedules WHERE schedule_time = %s;",
+            (req.schedule_date,)
+        )
+        total_agendamentos = cur.fetchone()[0]
+
+        # 2. TRAVA DE LIMITE: MÁXIMO 35 FORNECEDORES POR DIA
+        if total_agendamentos >= 35:
+            cur.close()
+            conn.close()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Limite atingido! A data {req.schedule_date} já possui o máximo de 35 agendamentos. Por favor, escolha outra data."
+            )
+
+        # 3. REGISTRA O AGENDAMENTO CASO AINDA HOUVER VAGAS
         cur.execute(
             """
             INSERT INTO schedules (
@@ -621,6 +593,8 @@ def create_schedule(req: ScheduleRequest):
         cur.close()
         conn.close()
         return {"status": "sucesso", "mensagem": "Agendamento registrado com sucesso!"}
+    except HTTPException as http_ex:
+        raise http_ex
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
