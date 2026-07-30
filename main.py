@@ -126,7 +126,7 @@ def get_form():
                 align-items: center;
                 gap: 6px;
             }
-            .info-box-text { font-size: 12px; color: #444; line-height: 1.5; margin-bottom: 10px; }
+            .info-box-text { font-size: 12px; color: #444; line-height: 1.5; margin-bottom: 8px; }
             .info-box-time {
                 font-weight: 700;
                 color: #b78103;
@@ -134,7 +134,17 @@ def get_form():
                 padding: 4px 8px;
                 border-radius: 4px;
                 display: inline-block;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
+                font-size: 12px;
+            }
+            .info-box-alert {
+                font-weight: 700;
+                color: #0b192c;
+                background: #ffe89c;
+                padding: 6px 10px;
+                border-radius: 4px;
+                display: block;
+                margin-bottom: 12px;
                 font-size: 12px;
             }
             .btn-manual {
@@ -222,6 +232,7 @@ def get_form():
             <div class="info-box">
                 <div class="info-box-title">📌 Informações Importantes</div>
                 <div class="info-box-time">⏰ Recebimento: Das 07:30 às 12:00 (Máx. 35 vagas/dia)</div>
+                <div class="info-box-alert">📄 Entregar nota fiscal ao lado da doca 10</div>
                 <div class="info-box-text">
                     Todas as normas operacionais, regras de conduta, EPIs e padrões de carga estão detalhados no nosso manual oficial.
                 </div>
@@ -252,22 +263,22 @@ def get_form():
                     </div>
                     <div class="form-group">
                         <label for="cargoType">TIPO DA CARGA:</label>
-                        <select id="cargoType" required onchange="togglePalletInput()">
+                        <select id="cargoType" required onchange="toggleQuantityInput()">
                             <option value="Paletizada">Paletizada</option>
                             <option value="Batida">Batida (Carga Solta)</option>
                         </select>
                     </div>
-                    <div class="form-group" id="palletGroup">
-                        <label for="palletQty">QUANTIDADE DE PALETES:</label>
-                        <input type="number" id="palletQty" value="0" min="0" placeholder="Ex: 26">
+                    <div class="form-group" id="qtyGroup">
+                        <label for="qtyInput" id="qtyLabel">QUANTIDADE DE PALETES:</label>
+                        <input type="number" id="qtyInput" value="0" min="0" placeholder="Ex: 26" required>
                     </div>
                     <div class="form-group">
-                        <label for="dock">DOCA DE DESCARREGAMENTO:</label>
+                        <label for="dock">GUICHÊ DE RECEBIMENTO:</label>
                         <select id="dock" required>
-                            <option value="1">Doca 01</option>
-                            <option value="2">Doca 02</option>
-                            <option value="3">Doca 03</option>
-                            <option value="4">Doca 04</option>
+                            <option value="1">Guichê 01</option>
+                            <option value="2">Guichê 02</option>
+                            <option value="3">Guichê 03</option>
+                            <option value="4">Guichê 04</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -290,14 +301,17 @@ def get_form():
                 return code;
             }
 
-            function togglePalletInput() {
+            function toggleQuantityInput() {
                 const cargoType = document.getElementById('cargoType').value;
-                const palletQty = document.getElementById('palletQty');
+                const qtyLabel = document.getElementById('qtyLabel');
+                const qtyInput = document.getElementById('qtyInput');
+                
                 if (cargoType === 'Batida') {
-                    palletQty.value = 0;
-                    palletQty.disabled = true;
+                    qtyLabel.innerText = 'QUANTIDADE DE VOLUMES:';
+                    qtyInput.placeholder = 'Ex: 150 (Caixas/Sacos)';
                 } else {
-                    palletQty.disabled = false;
+                    qtyLabel.innerText = 'QUANTIDADE DE PALETES:';
+                    qtyInput.placeholder = 'Ex: 26';
                 }
             }
 
@@ -314,7 +328,7 @@ def get_form():
                     cargo_weight: parseFloat(document.getElementById('weight').value),
                     storage_type: document.getElementById('storage').value,
                     cargo_type: document.getElementById('cargoType').value,
-                    pallet_quantity: parseInt(document.getElementById('palletQty').value || 0),
+                    pallet_quantity: parseInt(document.getElementById('qtyInput').value || 0),
                     dock_id: parseInt(document.getElementById('dock').value),
                     schedule_date: document.getElementById('scheduleDate').value,
                     access_code: randomCode
@@ -332,7 +346,7 @@ def get_form():
                         msgDiv.className = 'message success';
                         msgDiv.innerHTML = `Agendamento realizado com sucesso!<br>Sua senha de acesso é:<br><span class="code-highlight">${randomCode}</span>`;
                         document.getElementById('scheduleForm').reset();
-                        togglePalletInput();
+                        toggleQuantityInput();
                     } else {
                         msgDiv.className = 'message error';
                         msgDiv.innerText = data.detail || 'Erro ao realizar agendamento.';
@@ -473,8 +487,8 @@ def list_schedules_page():
                         <th>Peso (kg)</th>
                         <th>Armazenamento</th>
                         <th>Tipo Carga</th>
-                        <th>Paletes</th>
-                        <th>Doca</th>
+                        <th>Paletes / Vol.</th>
+                        <th>Guichê</th>
                         <th>Data Chegada</th>
                         <th class="action-column">Ações</th>
                     </tr>
@@ -500,6 +514,7 @@ def list_schedules_page():
 
                     data.forEach(row => {
                         const tr = document.createElement('tr');
+                        const qtyText = row.cargo_type === 'Batida' ? `${row.pallet_quantity} vol.` : `${row.pallet_quantity} pal.`;
                         tr.innerHTML = `
                             <td>${row.id}</td>
                             <td><span class="code-badge">${row.access_code || '-'}</span></td>
@@ -508,8 +523,8 @@ def list_schedules_page():
                             <td>${row.cargo_weight}</td>
                             <td>${row.storage_type}</td>
                             <td>${row.cargo_type || '-'}</td>
-                            <td>${row.pallet_quantity}</td>
-                            <td>Doca 0${row.dock_id}</td>
+                            <td>${qtyText}</td>
+                            <td>Guichê 0${row.dock_id}</td>
                             <td>${row.schedule_time}</td>
                             <td class="action-column">
                                 <button class="btn-delete" onclick="deleteSchedule(${row.id})">🗑️ Excluir</button>
