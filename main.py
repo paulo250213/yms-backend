@@ -10,6 +10,41 @@ app = FastAPI(title="YMS - Agendamento de Entregas")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 
+# Garante que a tabela exista com todas as colunas corretas ao iniciar a aplicação
+def init_db():
+    if not DATABASE_URL:
+        return
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS schedules (
+                id SERIAL PRIMARY KEY,
+                supplier_name VARCHAR(100) NOT NULL,
+                truck_plate VARCHAR(20) NOT NULL,
+                cargo_weight NUMERIC(10, 2) NOT NULL,
+                storage_type VARCHAR(20) NOT NULL,
+                dock_id INT NOT NULL,
+                schedule_time DATE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            
+            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS cargo_type VARCHAR(20);
+            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS pallet_quantity INT DEFAULT 0;
+            """
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("Erro ao inicializar o banco:", e)
+
+
+# Executa a verificação/criação do banco
+init_db()
+
+
 class ScheduleRequest(BaseModel):
     supplier_name: str
     truck_plate: str
@@ -37,7 +72,6 @@ def get_form():
             .form-group { margin-bottom: 15px; }
             label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
             input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-            /* Deixa a digitação automaticamente em maiúsculas na tela */
             .uppercase-input { text-transform: uppercase; }
             button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
             button:hover { background-color: #0056b3; }
