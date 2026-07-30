@@ -218,7 +218,7 @@ def list_schedules_page():
         <title>YMS - Consulta de Agendamentos</title>
         <style>
             body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
-            .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 1100px; margin: 0 auto; }
+            .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 1150px; margin: 0 auto; }
             h2 { color: #333; margin-top: 0; text-align: center; }
             .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; }
             .btn-group { display: flex; gap: 10px; }
@@ -226,6 +226,8 @@ def list_schedules_page():
             .btn:hover { background-color: #0056b3; }
             .btn-pdf { background-color: #28a745; }
             .btn-pdf:hover { background-color: #218838; }
+            .btn-delete { background-color: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
+            .btn-delete:hover { background-color: #c82333; }
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
             th, td { padding: 10px; border: 1px solid #ddd; text-align: center; font-size: 13px; }
             th { background-color: #f8f9fa; color: #333; font-weight: bold; }
@@ -238,7 +240,7 @@ def list_schedules_page():
             @media print {
                 body { background-color: #fff; padding: 0; }
                 .container { box-shadow: none; max-width: 100%; padding: 0; }
-                .no-print { display: none !important; }
+                .no-print, .action-column { display: none !important; }
                 h2 { margin-bottom: 15px; font-size: 20px; text-align: left; }
                 table { font-size: 11px; }
                 th, td { padding: 6px; }
@@ -256,9 +258,6 @@ def list_schedules_page():
                 </div>
             </div>
 
-            <!-- Título visível na impressão/PDF -->
-            <h2 class="print-only" style="display:none;">Relatório de Agendamentos YMS</h2>
-
             <table>
                 <thead>
                     <tr>
@@ -272,10 +271,11 @@ def list_schedules_page():
                         <th>Paletes</th>
                         <th>Doca</th>
                         <th>Data Chegada</th>
+                        <th class="action-column">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <tr><td colspan="10" class="no-data">Carregando agendamentos...</td></tr>
+                    <tr><td colspan="11" class="no-data">Carregando agendamentos...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -289,7 +289,7 @@ def list_schedules_page():
                     tbody.innerHTML = '';
 
                     if (data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="10" class="no-data">Nenhum agendamento encontrado.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="11" class="no-data">Nenhum agendamento encontrado.</td></tr>';
                         return;
                     }
 
@@ -306,12 +306,30 @@ def list_schedules_page():
                             <td>${row.pallet_quantity}</td>
                             <td>Doca 0${row.dock_id}</td>
                             <td>${row.schedule_time}</td>
+                            <td class="action-column">
+                                <button class="btn-delete" onclick="deleteSchedule(${row.id})">🗑️ Excluir</button>
+                            </td>
                         `;
                         tbody.appendChild(tr);
                     });
                 } catch (err) {
                     console.error(err);
-                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="10" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
+                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="11" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
+                }
+            }
+
+            async function deleteSchedule(id) {
+                if (confirm(`Tem certeza que deseja excluir o agendamento ID ${id}?`)) {
+                    try {
+                        const res = await fetch(`/api/schedule/${id}`, { method: 'DELETE' });
+                        if (res.ok) {
+                            loadSchedules();
+                        } else {
+                            alert('Erro ao excluir agendamento.');
+                        }
+                    } catch (err) {
+                        alert('Erro de conexão ao excluir.');
+                    }
                 }
             }
 
@@ -352,6 +370,21 @@ def create_schedule(req: ScheduleRequest):
         cur.close()
         conn.close()
         return {"status": "sucesso", "mensagem": "Agendamento registrado com sucesso!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- API PARA EXCLUIR AGENDAMENTO ---
+@app.delete("/api/schedule/{schedule_id}")
+def delete_schedule(schedule_id: int):
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute("DELETE FROM schedules WHERE id = %s;", (schedule_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "sucesso", "mensagem": "Agendamento excluído com sucesso!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
