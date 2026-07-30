@@ -3,12 +3,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import psycopg2
+import random
+import string
 
 app = FastAPI(title="YMS - Agendamento de Entregas")
 
 # Pega a URL do banco configurada no Render
 DATABASE_URL = os.getenv("DATABASE_URL")
-
 
 # Garante que a tabela exista com todas as colunas corretas ao iniciar a aplicação
 def init_db():
@@ -17,8 +18,7 @@ def init_db():
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        cur.execute(
-            """
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS schedules (
                 id SERIAL PRIMARY KEY,
                 supplier_name VARCHAR(100) NOT NULL,
@@ -32,18 +32,15 @@ def init_db():
             
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS cargo_type VARCHAR(20);
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS pallet_quantity INT DEFAULT 0;
-            """
-        )
+            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS access_code VARCHAR(20);
+        """)
         conn.commit()
         cur.close()
         conn.close()
     except Exception as e:
         print("Erro ao inicializar o banco:", e)
 
-
-# Executa a verificação/criação do banco
 init_db()
-
 
 class ScheduleRequest(BaseModel):
     supplier_name: str
@@ -54,7 +51,7 @@ class ScheduleRequest(BaseModel):
     pallet_quantity: int
     dock_id: int
     schedule_date: str
-
+    access_code: str
 
 @app.get("/", response_class=HTMLResponse)
 def get_form():
@@ -75,9 +72,10 @@ def get_form():
             .uppercase-input { text-transform: uppercase; }
             button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
             button:hover { background-color: #0056b3; }
-            .message { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; }
+            .message { margin-top: 15px; padding: 15px; border-radius: 4px; display: none; text-align: center; font-size: 15px; line-height: 1.5; }
             .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
             .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+            .code-highlight { font-size: 20px; font-weight: bold; background: #fff; padding: 5px 10px; border-radius: 4px; display: inline-block; margin-top: 5px; border: 1px dashed #28a745; color: #155724; }
         </style>
     </head>
     <body>
@@ -134,6 +132,15 @@ def get_form():
         </div>
 
         <script>
+            function generateRandomCode() {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                let code = '';
+                for (let i = 0; i < 6; i++) {
+                    code += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return code;
+            }
+
             function togglePalletInput() {
                 const cargoType = document.getElementById('cargoType').value;
                 const palletQty = document.getElementById('palletQty');
@@ -150,6 +157,9 @@ def get_form():
                 const msgDiv = document.getElementById('responseMsg');
                 msgDiv.style.display = 'none';
 
+                // Gera a senha automaticamente no momento do envio
+                const randomCode = generateRandomCode();
+
                 const payload = {
                     supplier_name: document.getElementById('supplier').value.toUpperCase(),
                     truck_plate: document.getElementById('plate').value.toUpperCase(),
@@ -158,7 +168,8 @@ def get_form():
                     cargo_type: document.getElementById('cargoType').value,
                     pallet_quantity: parseInt(document.getElementById('palletQty').value || 0),
                     dock_id: parseInt(document.getElementById('dock').value),
-                    schedule_date: document.getElementById('scheduleDate').value
+                    schedule_date: document.getElementById('scheduleDate').value,
+                    access_code: randomCode
                 };
 
                 try {
@@ -171,8 +182,9 @@ def get_form():
                     
                     if (res.ok) {
                         msgDiv.className = 'message success';
-                        msgDiv.innerText = 'Agendamento realizado com sucesso!';
+                        msgDiv.innerHTML = `Agendamento realizado com sucesso!<br>Sua senha de acesso é:<br><span class="code-highlight">${randomCode}</span>`;
                         document.getElementById('scheduleForm').reset();
+                        togglePalletInput(); // Restaura o campo de paletes
                     } else {
                         msgDiv.className = 'message error';
                         msgDiv.innerText = data.detail || 'Erro ao realizar agendamento.';
@@ -188,31 +200,28 @@ def get_form():
     </html>
     """
 
-
 @app.post("/api/schedule")
 def create_schedule(req: ScheduleRequest):
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        cur.execute(
-            """
+        cur.execute("""
             INSERT INTO schedules (
                 supplier_name, truck_plate, cargo_weight, storage_type, 
-                cargo_type, pallet_quantity, dock_id, schedule_time
+                cargo_type, pallet_quantity, dock_id, schedule_time, access_code
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
-            """,
-            (
-                req.supplier_name.upper(),
-                req.truck_plate.upper(),
-                req.cargo_weight,
-                req.storage_type,
-                req.cargo_type,
-                req.pallet_quantity,
-                req.dock_id,
-                req.schedule_date,
-            ),
-        )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+        """, (
+            req.supplier_name.upper(), 
+            req.truck_plate.upper(), 
+            req.cargo_weight, 
+            req.storage_type, 
+            req.cargo_type, 
+            req.pallet_quantity,
+            req.dock_id, 
+            req.schedule_date,
+            req.access_code
+        ))
         conn.commit()
         cur.close()
         conn.close()
