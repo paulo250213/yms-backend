@@ -31,6 +31,7 @@ def init_db():
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS cargo_type VARCHAR(20);
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS pallet_quantity INT DEFAULT 0;
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS access_code VARCHAR(20);
+            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Pendente';
             """
         )
         conn.commit()
@@ -53,6 +54,10 @@ class ScheduleRequest(BaseModel):
     dock_id: int
     schedule_date: str
     access_code: str
+
+
+class StatusUpdateRequest(BaseModel):
+    status: str
 
 
 # --- ROTA PARA DISPONIBILIZAR O DOWNLOAD DO MANUAL EM PDF ---
@@ -285,7 +290,7 @@ def get_form():
                         <label for="scheduleDate">DATA DA CHEGADA:</label>
                         <input type="date" id="scheduleDate" required>
                     </div>
-                    <button type="submit" class="btn-submit">Confirmar Agendamento</button>
+                    <button type="submit" class="btn-submit">Solicitar Agendamento</button>
                 </form>
                 <div id="responseMsg" class="message"></div>
             </div>
@@ -344,7 +349,7 @@ def get_form():
                     
                     if (res.ok) {
                         msgDiv.className = 'message success';
-                        msgDiv.innerHTML = `Agendamento realizado com sucesso!<br>Sua senha de acesso é:<br><span class="code-highlight">${randomCode}</span>`;
+                        msgDiv.innerHTML = `Solicitação enviada com sucesso!<br><strong>Status: Pendente de Aprovação</strong><br>Sua pré-senha é:<br><span class="code-highlight">${randomCode}</span>`;
                         document.getElementById('scheduleForm').reset();
                         toggleQuantityInput();
                     } else {
@@ -363,7 +368,7 @@ def get_form():
     """
 
 
-# --- TELA DE CONSULTA DE AGENDAMENTOS COM FILTRO ---
+# --- TELA DE CONSULTA E APROVAÇÃO DE AGENDAMENTOS ---
 @app.get("/agendamentos", response_class=HTMLResponse)
 def list_schedules_page():
     return """
@@ -387,7 +392,7 @@ def list_schedules_page():
                 padding: 30px; 
                 border-radius: 12px; 
                 box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
-                max-width: 1200px; 
+                max-width: 1300px; 
                 margin: 0 auto; 
             }
             .header-bar {
@@ -440,36 +445,74 @@ def list_schedules_page():
                 flex-direction: column;
                 gap: 5px;
                 flex: 1;
-                min-width: 180px;
+                min-width: 160px;
             }
             .filter-group label {
                 font-size: 12px;
                 font-weight: 700;
                 color: #0b192c;
             }
-            .filter-group input {
+            .filter-group input, .filter-group select {
                 padding: 9px 12px;
                 border: 1px solid #ced4da;
                 border-radius: 6px;
                 font-size: 13px;
                 font-family: inherit;
             }
-            .filter-group input:focus { outline: none; border-color: #0b192c; }
+            .filter-group input:focus, .filter-group select:focus { outline: none; border-color: #0b192c; }
+
+            /* BOTÕES DE AÇÃO NA TABELA */
+            .action-btns { display: flex; gap: 4px; justify-content: center; }
+            .btn-approve { 
+                background-color: #28a745; 
+                color: white; 
+                border: none; 
+                padding: 6px 10px; 
+                border-radius: 4px; 
+                cursor: pointer; 
+                font-weight: 600; 
+                font-size: 11px; 
+            }
+            .btn-approve:hover { background-color: #218838; }
+            
+            .btn-reject { 
+                background-color: #ffc107; 
+                color: #0b192c; 
+                border: none; 
+                padding: 6px 10px; 
+                border-radius: 4px; 
+                cursor: pointer; 
+                font-weight: 700; 
+                font-size: 11px; 
+            }
+            .btn-reject:hover { background-color: #e0a800; }
 
             .btn-delete { 
                 background-color: #dc3545; 
                 color: white; 
                 border: none; 
-                padding: 6px 12px; 
+                padding: 6px 10px; 
                 border-radius: 4px; 
                 cursor: pointer; 
                 font-weight: 600; 
-                font-size: 12px; 
+                font-size: 11px; 
             }
             .btn-delete:hover { background-color: #bd2130; }
 
+            /* BADGES DE STATUS */
+            .status-badge {
+                padding: 4px 10px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 700;
+                display: inline-block;
+            }
+            .status-pendente { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+            .status-aprovado { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+            .status-recusado { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { padding: 12px 10px; border: 1px solid #e9ecef; text-align: center; font-size: 13px; }
+            th, td { padding: 12px 8px; border: 1px solid #e9ecef; text-align: center; font-size: 13px; }
             th { background-color: #0b192c; color: #ffffff; font-weight: 600; }
             tr:nth-child(even) { background-color: #f8f9fa; }
             tr:hover { background-color: #f1f3f5; }
@@ -515,7 +558,16 @@ def list_schedules_page():
             <!-- FILTROS -->
             <div class="filter-bar no-print">
                 <div class="filter-group">
-                    <label for="filterDate">📅 Filtrar por Data de Chegada:</label>
+                    <label for="filterStatus">📌 Status:</label>
+                    <select id="filterStatus" onchange="applyFilters()">
+                        <option value="">Todos</option>
+                        <option value="Pendente">⏳ Pendentes</option>
+                        <option value="Aprovado">✅ Aprovados</option>
+                        <option value="Recusado">❌ Recusados</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterDate">📅 Data de Chegada:</label>
                     <input type="date" id="filterDate" onchange="applyFilters()">
                 </div>
                 <div class="filter-group">
@@ -530,6 +582,7 @@ def list_schedules_page():
                     <tr>
                         <th>ID</th>
                         <th>Senha</th>
+                        <th>Status</th>
                         <th>Fornecedor</th>
                         <th>Placa</th>
                         <th>Peso (kg)</th>
@@ -538,11 +591,11 @@ def list_schedules_page():
                         <th>Paletes / Vol.</th>
                         <th>Guichê</th>
                         <th>Data Chegada</th>
-                        <th class="action-column">Ações</th>
+                        <th class="action-column">Ações de Controle</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <tr><td colspan="11" class="no-data">Carregando agendamentos...</td></tr>
+                    <tr><td colspan="12" class="no-data">Carregando agendamentos...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -557,7 +610,7 @@ def list_schedules_page():
                     renderTable(allSchedules);
                 } catch (err) {
                     console.error(err);
-                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="11" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
+                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
                 }
             }
 
@@ -566,16 +619,20 @@ def list_schedules_page():
                 tbody.innerHTML = '';
 
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="11" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="12" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
                     return;
                 }
 
                 data.forEach(row => {
                     const tr = document.createElement('tr');
                     const qtyText = row.cargo_type === 'Batida' ? `${row.pallet_quantity} vol.` : `${row.pallet_quantity} pal.`;
+                    
+                    const statusClass = row.status === 'Aprovado' ? 'status-aprovado' : (row.status === 'Recusado' ? 'status-recusado' : 'status-pendente');
+                    
                     tr.innerHTML = `
                         <td>${row.id}</td>
                         <td><span class="code-badge">${row.access_code || '-'}</span></td>
+                        <td><span class="status-badge ${statusClass}">${row.status || 'Pendente'}</span></td>
                         <td><strong>${row.supplier_name}</strong></td>
                         <td>${row.truck_plate}</td>
                         <td>${row.cargo_weight}</td>
@@ -585,7 +642,11 @@ def list_schedules_page():
                         <td>Guichê 0${row.dock_id}</td>
                         <td>${row.schedule_time}</td>
                         <td class="action-column">
-                            <button class="btn-delete" onclick="deleteSchedule(${row.id})">🗑️ Excluir</button>
+                            <div class="action-btns">
+                                ${row.status !== 'Aprovado' ? `<button class="btn-approve" title="Aprovar" onclick="updateStatus(${row.id}, 'Aprovado')">✅</button>` : ''}
+                                ${row.status !== 'Recusado' ? `<button class="btn-reject" title="Recusar" onclick="updateStatus(${row.id}, 'Recusado')">❌</button>` : ''}
+                                <button class="btn-delete" title="Excluir" onclick="deleteSchedule(${row.id})">🗑️</button>
+                            </div>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -593,26 +654,46 @@ def list_schedules_page():
             }
 
             function applyFilters() {
+                const statusVal = document.getElementById('filterStatus').value;
                 const dateVal = document.getElementById('filterDate').value;
                 const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
 
                 const filtered = allSchedules.filter(item => {
+                    const matchStatus = !statusVal || (item.status || 'Pendente') === statusVal;
                     const matchDate = !dateVal || item.schedule_time === dateVal;
                     const matchSearch = !searchVal || 
                         (item.supplier_name && item.supplier_name.toLowerCase().includes(searchVal)) ||
                         (item.truck_plate && item.truck_plate.toLowerCase().includes(searchVal)) ||
                         (item.access_code && item.access_code.toLowerCase().includes(searchVal));
 
-                    return matchDate && matchSearch;
+                    return matchStatus && matchDate && matchSearch;
                 });
 
                 renderTable(filtered);
             }
 
             function clearFilters() {
+                document.getElementById('filterStatus').value = '';
                 document.getElementById('filterDate').value = '';
                 document.getElementById('filterSearch').value = '';
                 renderTable(allSchedules);
+            }
+
+            async function updateStatus(id, newStatus) {
+                try {
+                    const res = await fetch(`/api/schedule/${id}/status`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: newStatus })
+                    });
+                    if (res.ok) {
+                        loadSchedules();
+                    } else {
+                        alert('Erro ao atualizar status.');
+                    }
+                } catch (err) {
+                    alert('Erro de conexão.');
+                }
             }
 
             async function deleteSchedule(id) {
@@ -637,7 +718,7 @@ def list_schedules_page():
     """
 
 
-# --- API PARA SALVAR AGENDAMENTO COM TRAVA DE 35 VAGAS/DIA ---
+# --- API PARA SALVAR AGENDAMENTO (INICIA COMO PENDENTE) ---
 @app.post("/api/schedule")
 def create_schedule(req: ScheduleRequest):
     try:
@@ -660,14 +741,14 @@ def create_schedule(req: ScheduleRequest):
                 detail=f"Limite atingido! A data {req.schedule_date} já possui o máximo de 35 agendamentos. Por favor, escolha outra data."
             )
 
-        # 3. REGISTRA O AGENDAMENTO CASO AINDA HOUVER VAGAS
+        # 3. REGISTRA O AGENDAMENTO COM STATUS 'PENDENTE'
         cur.execute(
             """
             INSERT INTO schedules (
                 supplier_name, truck_plate, cargo_weight, storage_type, 
-                cargo_type, pallet_quantity, dock_id, schedule_time, access_code
+                cargo_type, pallet_quantity, dock_id, schedule_time, access_code, status
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendente');
             """,
             (
                 req.supplier_name.upper(),
@@ -684,9 +765,27 @@ def create_schedule(req: ScheduleRequest):
         conn.commit()
         cur.close()
         conn.close()
-        return {"status": "sucesso", "mensagem": "Agendamento registrado com sucesso!"}
+        return {"status": "sucesso", "mensagem": "Solicitação registrada com sucesso!"}
     except HTTPException as http_ex:
         raise http_ex
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- API PARA ALTERAR STATUS (APROVAR / RECUSAR) ---
+@app.patch("/api/schedule/{schedule_id}/status")
+def update_schedule_status(schedule_id: int, req: StatusUpdateRequest):
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE schedules SET status = %s WHERE id = %s;",
+            (req.status, schedule_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "sucesso", "mensagem": f"Status alterado para {req.status}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -715,7 +814,7 @@ def list_schedules():
         cur.execute(
             """
             SELECT id, supplier_name, truck_plate, cargo_weight, storage_type, 
-                   cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), access_code
+                   cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), access_code, status
             FROM schedules
             ORDER BY id DESC;
             """
@@ -738,6 +837,7 @@ def list_schedules():
                     "dock_id": r[7],
                     "schedule_time": r[8],
                     "access_code": r[9],
+                    "status": r[10] if r[10] else "Pendente",
                 }
             )
         return result
