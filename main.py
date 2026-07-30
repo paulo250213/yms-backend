@@ -363,7 +363,7 @@ def get_form():
     """
 
 
-# --- TELA DE CONSULTA DE AGENDAMENTOS ---
+# --- TELA DE CONSULTA DE AGENDAMENTOS COM FILTRO ---
 @app.get("/agendamentos", response_class=HTMLResponse)
 def list_schedules_page():
     return """
@@ -396,7 +396,7 @@ def list_schedules_page():
                 justify-content: space-between;
                 border-bottom: 3px solid #ffc107;
                 padding-bottom: 15px;
-                margin-bottom: 25px;
+                margin-bottom: 20px;
             }
             .brand-info { display: flex; align-items: center; gap: 12px; }
             .brand-info .icon { font-size: 32px; }
@@ -420,7 +420,42 @@ def list_schedules_page():
             .btn-pdf:hover { background-color: #1e3e62; }
             .btn-new { background-color: #ffc107; color: #0b192c; }
             .btn-new:hover { background-color: #e0a800; }
-            
+            .btn-clear { background-color: #6c757d; color: white; padding: 10px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; }
+            .btn-clear:hover { background-color: #5a6268; }
+
+            /* BARRA DE FILTROS */
+            .filter-bar {
+                background-color: #f8f9fa;
+                border: 1px solid #e9ecef;
+                border-radius: 8px;
+                padding: 15px 20px;
+                margin-bottom: 20px;
+                display: flex;
+                gap: 15px;
+                align-items: flex-end;
+                flex-wrap: wrap;
+            }
+            .filter-group {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+                flex: 1;
+                min-width: 180px;
+            }
+            .filter-group label {
+                font-size: 12px;
+                font-weight: 700;
+                color: #0b192c;
+            }
+            .filter-group input {
+                padding: 9px 12px;
+                border: 1px solid #ced4da;
+                border-radius: 6px;
+                font-size: 13px;
+                font-family: inherit;
+            }
+            .filter-group input:focus { outline: none; border-color: #0b192c; }
+
             .btn-delete { 
                 background-color: #dc3545; 
                 color: white; 
@@ -453,7 +488,7 @@ def list_schedules_page():
             @media print {
                 body { background-color: #fff; padding: 0; }
                 .container { box-shadow: none; max-width: 100%; padding: 0; }
-                .no-print, .action-column { display: none !important; }
+                .no-print, .action-column, .filter-bar { display: none !important; }
                 .header-bar { border-bottom: 2px solid #000; padding-bottom: 10px; }
                 th { background-color: #eee !important; color: #000 !important; }
                 table { font-size: 11px; }
@@ -475,6 +510,19 @@ def list_schedules_page():
                     <button class="btn btn-pdf" onclick="window.print()">📄 Exportar PDF / Imprimir</button>
                     <a href="/" class="btn btn-new">➕ Novo Agendamento</a>
                 </div>
+            </div>
+
+            <!-- FILTROS -->
+            <div class="filter-bar no-print">
+                <div class="filter-group">
+                    <label for="filterDate">📅 Filtrar por Data de Chegada:</label>
+                    <input type="date" id="filterDate" onchange="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <label for="filterSearch">🔍 Buscar (Fornecedor, Placa, Senha):</label>
+                    <input type="text" id="filterSearch" placeholder="Digite para buscar..." oninput="applyFilters()">
+                </div>
+                <button class="btn-clear" onclick="clearFilters()">🔄 Limpar Filtros</button>
             </div>
 
             <table>
@@ -500,42 +548,71 @@ def list_schedules_page():
         </div>
 
         <script>
+            let allSchedules = [];
+
             async function loadSchedules() {
                 try {
                     const res = await fetch('/api/schedules');
-                    const data = await res.json();
-                    const tbody = document.getElementById('tableBody');
-                    tbody.innerHTML = '';
-
-                    if (data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="11" class="no-data">Nenhum agendamento encontrado.</td></tr>';
-                        return;
-                    }
-
-                    data.forEach(row => {
-                        const tr = document.createElement('tr');
-                        const qtyText = row.cargo_type === 'Batida' ? `${row.pallet_quantity} vol.` : `${row.pallet_quantity} pal.`;
-                        tr.innerHTML = `
-                            <td>${row.id}</td>
-                            <td><span class="code-badge">${row.access_code || '-'}</span></td>
-                            <td><strong>${row.supplier_name}</strong></td>
-                            <td>${row.truck_plate}</td>
-                            <td>${row.cargo_weight}</td>
-                            <td>${row.storage_type}</td>
-                            <td>${row.cargo_type || '-'}</td>
-                            <td>${qtyText}</td>
-                            <td>Guichê 0${row.dock_id}</td>
-                            <td>${row.schedule_time}</td>
-                            <td class="action-column">
-                                <button class="btn-delete" onclick="deleteSchedule(${row.id})">🗑️ Excluir</button>
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
+                    allSchedules = await res.json();
+                    renderTable(allSchedules);
                 } catch (err) {
                     console.error(err);
                     document.getElementById('tableBody').innerHTML = '<tr><td colspan="11" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
                 }
+            }
+
+            function renderTable(data) {
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="11" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
+                    return;
+                }
+
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    const qtyText = row.cargo_type === 'Batida' ? `${row.pallet_quantity} vol.` : `${row.pallet_quantity} pal.`;
+                    tr.innerHTML = `
+                        <td>${row.id}</td>
+                        <td><span class="code-badge">${row.access_code || '-'}</span></td>
+                        <td><strong>${row.supplier_name}</strong></td>
+                        <td>${row.truck_plate}</td>
+                        <td>${row.cargo_weight}</td>
+                        <td>${row.storage_type}</td>
+                        <td>${row.cargo_type || '-'}</td>
+                        <td>${qtyText}</td>
+                        <td>Guichê 0${row.dock_id}</td>
+                        <td>${row.schedule_time}</td>
+                        <td class="action-column">
+                            <button class="btn-delete" onclick="deleteSchedule(${row.id})">🗑️ Excluir</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function applyFilters() {
+                const dateVal = document.getElementById('filterDate').value;
+                const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
+
+                const filtered = allSchedules.filter(item => {
+                    const matchDate = !dateVal || item.schedule_time === dateVal;
+                    const matchSearch = !searchVal || 
+                        (item.supplier_name && item.supplier_name.toLowerCase().includes(searchVal)) ||
+                        (item.truck_plate && item.truck_plate.toLowerCase().includes(searchVal)) ||
+                        (item.access_code && item.access_code.toLowerCase().includes(searchVal));
+
+                    return matchDate && matchSearch;
+                });
+
+                renderTable(filtered);
+            }
+
+            function clearFilters() {
+                document.getElementById('filterDate').value = '';
+                document.getElementById('filterSearch').value = '';
+                renderTable(allSchedules);
             }
 
             async function deleteSchedule(id) {
