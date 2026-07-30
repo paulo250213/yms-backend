@@ -1,78 +1,143 @@
+import os
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import psycopg2
-import uuid
-import os
-from datetime import datetime
 
-app = FastAPI()
+app = FastAPI(title="YMS - Agendamento de Entregas")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Pega a URL do banco configurada no Render
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-DB_URI = os.getenv("DATABASE_URL")
 
-class ScheduleSchema(BaseModel):
-    supplier_document: str
-    cargo_weight_kg: float
-    scheduled_start: datetime
-    scheduled_end: datetime
-    license_plate: str
-    driver_name: str
-    invoice_number: str
+class ScheduleRequest(BaseModel):
+    supplier_name: str
+    truck_plate: str
+    cargo_weight: float
+    dock_id: int
+    schedule_time: str
 
-@app.get("/")
-def home():
-    return {"status": "API YMS Operacional", "banco": "PostgreSQL Aiven"}
 
-@app.post("/api/agendar")
-def create_appointment(data: ScheduleSchema):
-    if not DB_URI:
-        raise HTTPException(status_code=500, detail="URL do banco de dados não configurada.")
-        
-    conn = psycopg2.connect(DB_URI)
-    cursor = conn.cursor()
+@app.get("/", response_class=HTMLResponse)
+def get_form():
+    return """
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>YMS - Agendamento de Entregas</title>
+        <style>
+            body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; }
+            .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 480px; }
+            h2 { color: #333; margin-top: 0; text-align: center; }
+            .form-group { margin-bottom: 15px; }
+            label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+            input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+            button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
+            button:hover { background-color: #0056b3; }
+            .message { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: center; }
+            .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+            .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>Agendamento de Carga / Doca</h2>
+            <form id="scheduleForm">
+                <div class="form-group">
+                    <label for="supplier">Nome do Fornecedor / Transportadora:</label>
+                    <input type="text" id="supplier" required placeholder="Ex: Transportes Silva">
+                </div>
+                <div class="form-group">
+                    <label for="plate">Placa do Veículo:</label>
+                    <input type="text" id="plate" required placeholder="Ex: ABC1D23">
+                </div>
+                <div class="form-group">
+                    <label for="weight">Peso da Carga (kg):</label>
+                    <input type="number" step="0.1" id="weight" required placeholder="Ex: 1500.50">
+                </div>
+                <div class="form-group">
+                    <label for="dock">Doca de Descarregamento:</label>
+                    <select id="dock" required>
+                        <option value="1">Doca 01</option>
+                        <option value="2">Doca 02</option>
+                        <option value="3">Doca 03</option>
+                        <option value="4">Doca 04</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="scheduleTime">Data e Hora da Chegada:</label>
+                    <input type="datetime-local" id="scheduleTime" required>
+                </div>
+                <button type="submit">Confirmar Agendamento</button>
+            </form>
+            <div id="responseMsg" class="message"></div>
+        </div>
 
-    # 1. Valida Limite de Peso (Máximo 12.000 kg por slot)
-    cursor.execute("""
-        SELECT COALESCE(SUM(cargo_weight_kg), 0) 
-        FROM delivery_appointments 
-        WHERE scheduled_start = %s AND status != 'CANCELADO'
-    """, (data.scheduled_start,))
-    
-    current_weight = cursor.fetchone()[0]
-    if float(current_weight) + data.cargo_weight_kg > 12000:
+        <script>
+            document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const msgDiv = document.getElementById('responseMsg');
+                msgDiv.style.display = 'none';
+
+                const payload = {
+                    supplier_name: document.getElementById('supplier').value,
+                    truck_plate: document.getElementById('plate').value,
+                    cargo_weight: parseFloat(document.getElementById('weight').value),
+                    dock_id: parseInt(document.getElementById('dock').value),
+                    schedule_time: document.getElementById('scheduleTime').value
+                };
+
+                try {
+                    const res = await fetch('/api/schedule', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    
+                    if (res.ok) {
+                        msgDiv.className = 'message success';
+                        msgDiv.innerText = 'Agendamento realizado com sucesso!';
+                        document.getElementById('scheduleForm').reset();
+                    } else {
+                        msgDiv.className = 'message error';
+                        msgDiv.innerText = data.detail || 'Erro ao realizar agendamento.';
+                    }
+                } catch (err) {
+                    msgDiv.className = 'message error';
+                    msgDiv.innerText = 'Erro na conexão com o servidor.';
+                }
+                msgDiv.style.display = 'block';
+            });
+        </script>
+    </body>
+    </html>
+    """
+
+
+@app.post("/api/schedule")
+def create_schedule(req: ScheduleRequest):
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO schedules (supplier_name, truck_plate, cargo_weight, dock_id, schedule_time)
+            VALUES (%s, %s, %s, %s, %s);
+            """,
+            (
+                req.supplier_name,
+                req.truck_plate,
+                req.cargo_weight,
+                req.dock_id,
+                req.schedule_time,
+            ),
+        )
+        conn.commit()
+        cur.close()
         conn.close()
-        raise HTTPException(status_code=400, detail="Capacidade de peso excedida para este horário (Máx: 12 t).")
-
-    # 2. Valida Limite de Docas (Máximo 5 veículos por slot)
-    cursor.execute("""
-        SELECT COUNT(id) 
-        FROM delivery_appointments 
-        WHERE scheduled_start = %s AND status != 'CANCELADO'
-    """, (data.scheduled_start,))
-    
-    current_docks = cursor.fetchone()[0]
-    if current_docks >= 5:
-        conn.close()
-        raise HTTPException(status_code=400, detail="Todas as docas estão ocupadas para este horário.")
-
-    # 3. Grava no banco Aiven
-    code = f"YMS-{uuid.uuid4().hex[:6].upper()}"
-    cursor.execute("""
-        INSERT INTO delivery_appointments 
-        (appointment_code, supplier_document, cargo_weight_kg, driver_name, license_plate, invoice_number, scheduled_start, scheduled_end)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    """, (code, data.supplier_document, data.cargo_weight_kg, data.driver_name, data.license_plate, data.invoice_number, data.scheduled_start, data.scheduled_end))
-    
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    return {"status": "SUCESSO", "codigo_agendamento": code}
+        return {"status": "sucesso", "mensagem": "Agendamento registrado com sucesso!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
