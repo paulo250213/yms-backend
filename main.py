@@ -1,4 +1,7 @@
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import psycopg2
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
@@ -7,6 +10,68 @@ from pydantic import BaseModel
 app = FastAPI(title="DINIZ - YMS Agendamento de Entregas")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Configurações de E-mail via Variáveis de Ambiente
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL")
+APP_URL = os.getenv("APP_URL", "https://seu-app.onrender.com")
+
+
+def send_email_notification(schedule_data: dict):
+    if not SMTP_EMAIL or not SMTP_PASSWORD or not NOTIFY_EMAIL:
+        print("AVISO: Configurações de e-mail não encontradas nas variáveis de ambiente.")
+        return
+
+    try:
+        subject = f"📬 Novo Agendamento Pendente - {schedule_data['supplier_name']}"
+        
+        body_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+            <div style="max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
+                <h2 style="color: #0b192c; border-bottom: 3px solid #ffc107; padding-bottom: 10px; margin-top: 0;">
+                    👨‍🍳 DINIZ ALIMENTOS - Novo Agendamento
+                </h2>
+                <p>Uma nova solicitação de agendamento foi registrada e está <strong>aguardando sua aprovação</strong>.</p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f9f9f9;">
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Fornecedor:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['supplier_name']}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Placa do Veículo:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['truck_plate']}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Peso da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['cargo_weight']} kg</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo de Armazenamento:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['storage_type']}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['cargo_type']} ({schedule_data['pallet_quantity']} Qtd.)</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Guichê:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">Guichê {schedule_data['dock_id']}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Data Prevista:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['schedule_date']}</td></tr>
+                    <tr><td style="padding: 8px;"><strong>Pré-Senha:</strong></td><td style="padding: 8px;"><strong style="color: #137333;">{schedule_data['access_code']}</strong></td></tr>
+                </table>
+
+                <div style="text-align: center; margin-top: 25px;">
+                    <a href="{APP_URL}/agendamentos" style="background-color: #0b192c; color: #ffc107; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">
+                        👉 Acessar Painel para Aprovar ou Recusar
+                    </a>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = SMTP_EMAIL
+        msg["To"] = NOTIFY_EMAIL
+        msg.attach(MIMEText(body_html, "html"))
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, NOTIFY_EMAIL, msg.as_string())
+
+        print("E-mail de notificação enviado com sucesso!")
+    except Exception as e:
+        print(f"Erro ao enviar e-mail de notificação: {e}")
 
 
 def init_db():
@@ -280,10 +345,7 @@ def get_form():
                     <div class="form-group">
                         <label for="dock">GUICHÊ DE RECEBIMENTO:</label>
                         <select id="dock" required>
-                            <option value="1">Guichê 01</option>
-                            <option value="2">Guichê 02</option>
-                            <option value="3">Guichê 03</option>
-                            <option value="4">Guichê 04</option>
+                            <option value="10" selected>Guichê 10</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -428,7 +490,6 @@ def list_schedules_page():
             .btn-clear { background-color: #6c757d; color: white; padding: 10px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; }
             .btn-clear:hover { background-color: #5a6268; }
 
-            /* BARRA DE FILTROS */
             .filter-bar {
                 background-color: #f8f9fa;
                 border: 1px solid #e9ecef;
@@ -461,7 +522,6 @@ def list_schedules_page():
             }
             .filter-group input:focus, .filter-group select:focus { outline: none; border-color: #0b192c; }
 
-            /* BOTÕES DE AÇÃO NA TABELA */
             .action-btns { display: flex; gap: 4px; justify-content: center; }
             .btn-approve { 
                 background-color: #28a745; 
@@ -499,7 +559,6 @@ def list_schedules_page():
             }
             .btn-delete:hover { background-color: #bd2130; }
 
-            /* BADGES DE STATUS */
             .status-badge {
                 padding: 4px 10px;
                 border-radius: 12px;
@@ -629,6 +688,8 @@ def list_schedules_page():
                     
                     const statusClass = row.status === 'Aprovado' ? 'status-aprovado' : (row.status === 'Recusado' ? 'status-recusado' : 'status-pendente');
                     
+                    const dockText = row.dock_id < 10 ? `Guichê 0${row.dock_id}` : `Guichê ${row.dock_id}`;
+
                     tr.innerHTML = `
                         <td>${row.id}</td>
                         <td><span class="code-badge">${row.access_code || '-'}</span></td>
@@ -639,7 +700,7 @@ def list_schedules_page():
                         <td>${row.storage_type}</td>
                         <td>${row.cargo_type || '-'}</td>
                         <td>${qtyText}</td>
-                        <td>Guichê 0${row.dock_id}</td>
+                        <td>${dockText}</td>
                         <td>${row.schedule_time}</td>
                         <td class="action-column">
                             <div class="action-btns">
@@ -718,7 +779,7 @@ def list_schedules_page():
     """
 
 
-# --- API PARA SALVAR AGENDAMENTO (INICIA COMO PENDENTE) ---
+# --- API PARA SALVAR AGENDAMENTO (INICIA COMO PENDENTE E DISPARA E-MAIL) ---
 @app.post("/api/schedule")
 def create_schedule(req: ScheduleRequest):
     try:
@@ -765,6 +826,10 @@ def create_schedule(req: ScheduleRequest):
         conn.commit()
         cur.close()
         conn.close()
+
+        # 4. DISPARA O E-MAIL DE NOTIFICAÇÃO
+        send_email_notification(req.dict())
+
         return {"status": "sucesso", "mensagem": "Solicitação registrada com sucesso!"}
     except HTTPException as http_ex:
         raise http_ex
@@ -805,7 +870,7 @@ def delete_schedule(schedule_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- API PARA LISTAR OS AGENDAMENTOS EM JSON ---
+# --- API PARA LISTAR OS AGENDAMENTOS EM JSON (ORDEM ALFABÉTICA POR FORNECEDOR) ---
 @app.get("/api/schedules")
 def list_schedules():
     try:
@@ -816,7 +881,7 @@ def list_schedules():
             SELECT id, supplier_name, truck_plate, cargo_weight, storage_type, 
                    cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), access_code, status
             FROM schedules
-            ORDER BY id DESC;
+            ORDER BY supplier_name ASC;
             """
         )
         rows = cur.fetchall()
