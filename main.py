@@ -45,7 +45,6 @@ def send_email_notification(schedule_data: dict):
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Peso da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['cargo_weight']} kg</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo de Armazenamento:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['storage_type']}</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['cargo_type']} ({schedule_data['pallet_quantity']} Qtd.)</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Guichê:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">Guichê {schedule_data['dock_id']}</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Data Prevista:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['schedule_date']}</td></tr>
                     <tr><td style="padding: 8px;"><strong>Pré-Senha:</strong></td><td style="padding: 8px;"><strong style="color: #137333;">{schedule_data['access_code']}</strong></td></tr>
                 </table>
@@ -90,7 +89,7 @@ def init_db():
                 truck_plate VARCHAR(20) NOT NULL,
                 cargo_weight NUMERIC(10, 2) NOT NULL,
                 storage_type VARCHAR(20) NOT NULL,
-                dock_id INT NOT NULL,
+                dock_id INT NOT NULL DEFAULT 10,
                 schedule_time DATE NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -124,7 +123,7 @@ class ScheduleRequest(BaseModel):
     storage_type: str
     cargo_type: str
     pallet_quantity: int
-    dock_id: int
+    dock_id: int = 10
     schedule_date: str
     access_code: str
 
@@ -370,12 +369,6 @@ def get_form():
                         <input type="number" id="qtyInput" value="0" min="0" placeholder="Ex: 26" required>
                     </div>
                     <div class="form-group">
-                        <label for="dock">GUICHÊ DE RECEBIMENTO:</label>
-                        <select id="dock" required>
-                            <option value="10" selected>Guichê 10</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
                         <label for="scheduleDate">DATA DA CHEGADA:</label>
                         <input type="date" id="scheduleDate" required>
                     </div>
@@ -452,7 +445,7 @@ def get_form():
                     storage_type: document.getElementById('storage').value,
                     cargo_type: document.getElementById('cargoType').value,
                     pallet_quantity: parseInt(document.getElementById('qtyInput').value || 0),
-                    dock_id: parseInt(document.getElementById('dock').value),
+                    dock_id: 10,
                     schedule_date: document.getElementById('scheduleDate').value,
                     access_code: randomCode
                 };
@@ -701,13 +694,12 @@ def list_schedules_page():
                         <th>Armaz.</th>
                         <th>Tipo Carga</th>
                         <th>Paletes/Vol.</th>
-                        <th>Guichê</th>
                         <th>Data Chegada</th>
                         <th class="action-column">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <tr><td colspan="13" class="no-data">Carregando agendamentos...</td></tr>
+                    <tr><td colspan="12" class="no-data">Carregando agendamentos...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -722,7 +714,7 @@ def list_schedules_page():
                     renderTable(allSchedules);
                 } catch (err) {
                     console.error(err);
-                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="13" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
+                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
                 }
             }
 
@@ -731,7 +723,7 @@ def list_schedules_page():
                 tbody.innerHTML = '';
 
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="13" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="12" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
                     return;
                 }
 
@@ -740,8 +732,6 @@ def list_schedules_page():
                     const qtyText = row.cargo_type === 'Batida' ? `${row.pallet_quantity} vol.` : `${row.pallet_quantity} pal.`;
                     
                     const statusClass = row.status === 'Aprovado' ? 'status-aprovado' : (row.status === 'Recusado' ? 'status-recusado' : 'status-pendente');
-                    
-                    const dockText = row.dock_id < 10 ? `Guichê 0${row.dock_id}` : `Guichê ${row.dock_id}`;
 
                     const contactPref = row.preferred_contact || 'whatsapp';
                     const phoneNum = row.phone || '';
@@ -753,7 +743,7 @@ def list_schedules_page():
 
                     if (contactPref === 'whatsapp' || phoneNum) {
                         contactDisplay = `📱 ${phoneNum}`;
-                        const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}. Guichê: ${row.dock_id}.`);
+                        const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}.`);
                         const textReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado. Por favor, acesse nosso site e faça uma nova solicitação.`);
                         
                         btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>`;
@@ -761,7 +751,7 @@ def list_schedules_page():
                     } else if (contactPref === 'email' || emailAddr) {
                         contactDisplay = `✉️ ${emailAddr}`;
                         const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
-                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\nGuichê: ${row.dock_id}\n\nAtenciosamente,\nDiniz Alimentos`);
+                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\n\nAtenciosamente,\nDiniz Alimentos`);
 
                         const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
                         const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Alimentos`);
@@ -781,7 +771,6 @@ def list_schedules_page():
                         <td>${row.storage_type}</td>
                         <td>${row.cargo_type || '-'}</td>
                         <td>${qtyText}</td>
-                        <td>${dockText}</td>
                         <td>${row.schedule_time}</td>
                         <td class="action-column">
                             <div class="action-btns">
