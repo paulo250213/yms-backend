@@ -39,8 +39,8 @@ def send_email_notification(schedule_data: dict):
                 
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f9f9f9;">
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Fornecedor:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['supplier_name']}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Contato Celular:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('phone', '-')}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Contato E-mail:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('email', '-')}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Contato Preferencial:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('preferred_contact', 'whatsapp').upper()}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Dado de Contato:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('phone') if schedule_data.get('preferred_contact') == 'whatsapp' else schedule_data.get('email')}</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Placa do Veículo:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['truck_plate']}</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Peso da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['cargo_weight']} kg</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo de Armazenamento:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['storage_type']}</td></tr>
@@ -101,6 +101,7 @@ def init_db():
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Pendente';
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS email VARCHAR(100);
+            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS preferred_contact VARCHAR(20) DEFAULT 'whatsapp';
             """
         )
         conn.commit()
@@ -115,6 +116,7 @@ init_db()
 
 class ScheduleRequest(BaseModel):
     supplier_name: str
+    preferred_contact: str = "whatsapp"
     phone: str = ""
     email: str = ""
     truck_plate: str
@@ -321,14 +323,26 @@ def get_form():
                         <label for="supplier">NOME DO FORNECEDOR:</label>
                         <input type="text" id="supplier" class="uppercase-input" required placeholder="Ex: SILVA ALIMENTOS LTDA">
                     </div>
+
+                    <!-- SELEÇÃO DE CANAL DE CONTATO PREFERENCIAL -->
                     <div class="form-group">
+                        <label for="preferredContact">RECEBER CONFIRMAÇÃO POR:</label>
+                        <select id="preferredContact" onchange="toggleContactInput()" required>
+                            <option value="whatsapp" selected>📱 WhatsApp</option>
+                            <option value="email">✉️ E-mail</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="phoneGroup">
                         <label for="phone">CELULAR / WHATSAPP:</label>
                         <input type="text" id="phone" required placeholder="Ex: 11999998888 (com DDD)">
                     </div>
-                    <div class="form-group">
+
+                    <div class="form-group" id="emailGroup" style="display: none;">
                         <label for="email">E-MAIL DE CONTATO:</label>
-                        <input type="email" id="email" required placeholder="Ex: contato@fornecedor.com">
+                        <input type="email" id="email" placeholder="Ex: contato@fornecedor.com">
                     </div>
+
                     <div class="form-group">
                         <label for="plate">PLACA DO VEÍCULO:</label>
                         <input type="text" id="plate" class="uppercase-input" required placeholder="Ex: ABC1D23">
@@ -382,6 +396,26 @@ def get_form():
                 return code;
             }
 
+            function toggleContactInput() {
+                const contactType = document.getElementById('preferredContact').value;
+                const phoneGroup = document.getElementById('phoneGroup');
+                const emailGroup = document.getElementById('emailGroup');
+                const phoneInput = document.getElementById('phone');
+                const emailInput = document.getElementById('email');
+
+                if (contactType === 'whatsapp') {
+                    phoneGroup.style.display = 'block';
+                    emailGroup.style.display = 'none';
+                    phoneInput.required = true;
+                    emailInput.required = false;
+                } else {
+                    phoneGroup.style.display = 'none';
+                    emailGroup.style.display = 'block';
+                    phoneInput.required = false;
+                    emailInput.required = true;
+                }
+            }
+
             function toggleQuantityInput() {
                 const cargoType = document.getElementById('cargoType').value;
                 const qtyLabel = document.getElementById('qtyLabel');
@@ -402,6 +436,7 @@ def get_form():
                 msgDiv.style.display = 'none';
 
                 const randomCode = generateRandomCode();
+                const preferred = document.getElementById('preferredContact').value;
 
                 let cleanPhone = document.getElementById('phone').value.replace(/\D/g, '');
                 if (cleanPhone.length >= 10 && !cleanPhone.startsWith('55')) {
@@ -410,8 +445,9 @@ def get_form():
 
                 const payload = {
                     supplier_name: document.getElementById('supplier').value.toUpperCase(),
-                    phone: cleanPhone,
-                    email: document.getElementById('email').value.trim(),
+                    preferred_contact: preferred,
+                    phone: preferred === 'whatsapp' ? cleanPhone : '',
+                    email: preferred === 'email' ? document.getElementById('email').value.trim() : '',
                     truck_plate: document.getElementById('plate').value.toUpperCase(),
                     cargo_weight: parseFloat(document.getElementById('weight').value),
                     storage_type: document.getElementById('storage').value,
@@ -434,6 +470,7 @@ def get_form():
                         msgDiv.className = 'message success';
                         msgDiv.innerHTML = `Solicitação enviada com sucesso!<br><strong>Status: Pendente de Aprovação</strong><br>Sua pré-senha é:<br><span class="code-highlight">${randomCode}</span>`;
                         document.getElementById('scheduleForm').reset();
+                        toggleContactInput();
                         toggleQuantityInput();
                     } else {
                         msgDiv.className = 'message error';
@@ -543,10 +580,10 @@ def list_schedules_page():
             }
             .filter-group input:focus, .filter-group select:focus { outline: none; border-color: #0b192c; }
 
-            .action-btns { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+            .action-btns { display: flex; gap: 6px; justify-content: center; align-items: center; }
             .btn-action {
                 color: white; 
-                padding: 4px 8px; 
+                padding: 6px 10px; 
                 border-radius: 4px; 
                 text-decoration: none; 
                 font-size: 11px; 
@@ -555,28 +592,25 @@ def list_schedules_page():
                 cursor: pointer;
                 display: inline-flex;
                 align-items: center;
-                gap: 3px;
+                gap: 4px;
+                white-space: nowrap;
             }
-            .btn-whats-app { background-color: #25D366; }
-            .btn-whats-app:hover { background-color: #1eb956; }
-            .btn-whats-rej { background-color: #ff4d4d; }
-            .btn-whats-rej:hover { background-color: #e63939; }
-            .btn-email-app { background-color: #007bff; }
-            .btn-email-app:hover { background-color: #0056b3; }
-            .btn-email-rej { background-color: #6c757d; }
-            .btn-email-rej:hover { background-color: #545b62; }
+            .btn-app { background-color: #28a745; }
+            .btn-app:hover { background-color: #218838; }
+            .btn-rej { background-color: #dc3545; }
+            .btn-rej:hover { background-color: #c82333; }
 
             .btn-delete { 
-                background-color: #dc3545; 
+                background-color: #6c757d; 
                 color: white; 
                 border: none; 
-                padding: 4px 8px; 
+                padding: 6px 8px; 
                 border-radius: 4px; 
                 cursor: pointer; 
                 font-weight: 600; 
                 font-size: 11px; 
             }
-            .btn-delete:hover { background-color: #bd2130; }
+            .btn-delete:hover { background-color: #5a6268; }
 
             .status-badge {
                 padding: 4px 10px;
@@ -590,7 +624,7 @@ def list_schedules_page():
             .status-recusado { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { padding: 10px 6px; border: 1px solid #e9ecef; text-align: center; font-size: 12px; }
+            th, td { padding: 10px 8px; border: 1px solid #e9ecef; text-align: center; font-size: 12px; }
             th { background-color: #0b192c; color: #ffffff; font-weight: 600; }
             tr:nth-child(even) { background-color: #f8f9fa; }
             tr:hover { background-color: #f1f3f5; }
@@ -662,7 +696,7 @@ def list_schedules_page():
                         <th>Senha</th>
                         <th>Status</th>
                         <th>Fornecedor</th>
-                        <th>Contato</th>
+                        <th>Contato Escolhido</th>
                         <th>Placa</th>
                         <th>Peso (kg)</th>
                         <th>Armaz.</th>
@@ -670,7 +704,7 @@ def list_schedules_page():
                         <th>Paletes/Vol.</th>
                         <th>Guichê</th>
                         <th>Data Chegada</th>
-                        <th class="action-column">Ações de Resposta</th>
+                        <th class="action-column">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -710,31 +744,39 @@ def list_schedules_page():
                     
                     const dockText = row.dock_id < 10 ? `Guichê 0${row.dock_id}` : `Guichê ${row.dock_id}`;
 
+                    const contactPref = row.preferred_contact || 'whatsapp';
                     const phoneNum = row.phone || '';
                     const emailAddr = row.email || '';
 
-                    // TEXTOS AUTOMÁTICOS
-                    const textWhatsApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}. Guichê: ${row.dock_id}.`);
-                    const textWhatsReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado devido à lotação das vagas. Por favor, acesse nosso site e faça uma nova solicitação para outra data.`);
+                    let contactDisplay = '-';
+                    let btnApprove = '';
+                    let btnReject = '';
 
-                    const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
-                    const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\nGuichê: ${row.dock_id}\n\nAtenciosamente,\nDiniz Alimentos`);
+                    if (contactPref === 'whatsapp' || phoneNum) {
+                        contactDisplay = `📱 ${phoneNum}`;
+                        const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}. Guichê: ${row.dock_id}.`);
+                        const textReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado devido à lotação das vagas. Por favor, acesse nosso site e faça uma nova solicitação.`);
+                        
+                        btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>`;
+                        btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>`;
+                    } else if (contactPref === 'email' || emailAddr) {
+                        contactDisplay = `✉️ ${emailAddr}`;
+                        const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
+                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\nGuichê: ${row.dock_id}\n\nAtenciosamente,\nDiniz Alimentos`);
 
-                    const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
-                    const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada por falta de vagas.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando uma nova data.\n\nAtenciosamente,\nDiniz Alimentos`);
+                        const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
+                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada por falta de vagas.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Alimentos`);
 
-                    let btnWhats = phoneNum ? `<a class="btn-action btn-whats-app" href="https://wa.me/${phoneNum}?text=${textWhatsApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>
-                                               <a class="btn-action btn-whats-rej" href="https://wa.me/${phoneNum}?text=${textWhatsReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>` : '';
-
-                    let btnEmail = emailAddr ? `<a class="btn-action btn-email-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ E-mail (Aprovar)</a>
-                                                <a class="btn-action btn-email-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">✉️ E-mail (Recusar)</a>` : '';
+                        btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ E-mail (Aprovar)</a>`;
+                        btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">✉️ E-mail (Recusar)</a>`;
+                    }
 
                     tr.innerHTML = `
                         <td>${row.id}</td>
                         <td><span class="code-badge">${row.access_code || '-'}</span></td>
                         <td><span class="status-badge ${statusClass}">${row.status || 'Pendente'}</span></td>
                         <td><strong>${row.supplier_name}</strong></td>
-                        <td style="font-size:11px;">${phoneNum ? '📱 '+phoneNum : ''}<br>${emailAddr ? '✉️ '+emailAddr : ''}</td>
+                        <td style="font-size:11px;">${contactDisplay}</td>
                         <td>${row.truck_plate}</td>
                         <td>${row.cargo_weight}</td>
                         <td>${row.storage_type}</td>
@@ -744,9 +786,9 @@ def list_schedules_page():
                         <td>${row.schedule_time}</td>
                         <td class="action-column">
                             <div class="action-btns">
-                                ${btnWhats}
-                                ${btnEmail}
-                                <button class="btn-delete" title="Excluir" onclick="deleteSchedule(${row.id})">🗑️ Excluir</button>
+                                ${btnApprove}
+                                ${btnReject}
+                                <button class="btn-delete" title="Excluir" onclick="deleteSchedule(${row.id})">🗑️</button>
                             </div>
                         </td>
                     `;
@@ -815,21 +857,19 @@ def list_schedules_page():
     """
 
 
-# --- API PARA SALVAR AGENDAMENTO (INICIA COMO PENDENTE E DISPARA E-MAIL) ---
+# --- API PARA SALVAR AGENDAMENTO ---
 @app.post("/api/schedule")
 def create_schedule(req: ScheduleRequest):
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
 
-        # 1. VERIFICA A QUANTIDADE DE AGENDAMENTOS NA DATA SELECIONADA
         cur.execute(
             "SELECT COUNT(*) FROM schedules WHERE schedule_time = %s;",
             (req.schedule_date,)
         )
         total_agendamentos = cur.fetchone()[0]
 
-        # 2. TRAVA DE LIMITE: MÁXIMO 35 FORNECEDORES POR DIA
         if total_agendamentos >= 35:
             cur.close()
             conn.close()
@@ -838,17 +878,17 @@ def create_schedule(req: ScheduleRequest):
                 detail=f"Limite atingido! A data {req.schedule_date} já possui o máximo de 35 agendamentos. Por favor, escolha outra data."
             )
 
-        # 3. REGISTRA O AGENDAMENTO COM STATUS 'PENDENTE'
         cur.execute(
             """
             INSERT INTO schedules (
-                supplier_name, phone, email, truck_plate, cargo_weight, storage_type, 
+                supplier_name, preferred_contact, phone, email, truck_plate, cargo_weight, storage_type, 
                 cargo_type, pallet_quantity, dock_id, schedule_time, access_code, status
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendente');
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendente');
             """,
             (
                 req.supplier_name.upper(),
+                req.preferred_contact,
                 req.phone,
                 req.email,
                 req.truck_plate.upper(),
@@ -865,7 +905,6 @@ def create_schedule(req: ScheduleRequest):
         cur.close()
         conn.close()
 
-        # 4. DISPARA O E-MAIL DE NOTIFICAÇÃO INTERNA
         send_email_notification(req.dict())
 
         return {"status": "sucesso", "mensagem": "Solicitação registrada com sucesso!"}
@@ -875,7 +914,7 @@ def create_schedule(req: ScheduleRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- API PARA ALTERAR STATUS (APROVAR / RECUSAR) ---
+# --- API PARA ALTERAR STATUS ---
 @app.patch("/api/schedule/{schedule_id}/status")
 def update_schedule_status(schedule_id: int, req: StatusUpdateRequest):
     try:
@@ -908,7 +947,7 @@ def delete_schedule(schedule_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- API PARA LISTAR OS AGENDAMENTOS EM JSON (ORDEM ALFABÉTICA POR FORNECEDOR) ---
+# --- API PARA LISTAR OS AGENDAMENTOS EM JSON ---
 @app.get("/api/schedules")
 def list_schedules():
     try:
@@ -918,7 +957,7 @@ def list_schedules():
             """
             SELECT id, supplier_name, truck_plate, cargo_weight, storage_type, 
                    cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), 
-                   access_code, status, phone, email
+                   access_code, status, phone, email, preferred_contact
             FROM schedules
             ORDER BY supplier_name ASC;
             """
@@ -944,6 +983,7 @@ def list_schedules():
                     "status": r[10] if r[10] else "Pendente",
                     "phone": r[11] if len(r) > 11 and r[11] else "",
                     "email": r[12] if len(r) > 12 and r[12] else "",
+                    "preferred_contact": r[13] if len(r) > 13 and r[13] else "whatsapp",
                 }
             )
         return result
