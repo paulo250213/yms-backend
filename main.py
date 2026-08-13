@@ -309,7 +309,7 @@ def get_form():
 
             <div class="info-box">
                 <div class="info-box-title">📌 Informações Importantes</div>
-                <div class="info-box-time">⏰ Recebimento: Das 07:30 às 12:00 (Máx. 35 vagas/dia)</div>
+                <div class="info-box-time">⏰ Recebimento: Das 07:30 às 12:00</div>
                 <div class="info-box-alert">📄 Entregar nota fiscal ao lado da doca 10</div>
                 <div class="info-box-text">
                     Todas as normas operacionais, regras de conduta, EPIs e padrões de carga estão detalhados no nosso manual oficial.
@@ -324,7 +324,6 @@ def get_form():
                         <input type="text" id="supplier" class="uppercase-input" required placeholder="Ex: SILVA ALIMENTOS LTDA">
                     </div>
 
-                    <!-- SELEÇÃO DE CANAL DE CONTATO PREFERENCIAL -->
                     <div class="form-group">
                         <label for="preferredContact">RECEBER CONFIRMAÇÃO POR:</label>
                         <select id="preferredContact" onchange="toggleContactInput()" required>
@@ -755,7 +754,7 @@ def list_schedules_page():
                     if (contactPref === 'whatsapp' || phoneNum) {
                         contactDisplay = `📱 ${phoneNum}`;
                         const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}. Guichê: ${row.dock_id}.`);
-                        const textReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado devido à lotação das vagas. Por favor, acesse nosso site e faça uma nova solicitação.`);
+                        const textReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado. Por favor, acesse nosso site e faça uma nova solicitação.`);
                         
                         btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>`;
                         btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>`;
@@ -765,7 +764,7 @@ def list_schedules_page():
                         const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\nGuichê: ${row.dock_id}\n\nAtenciosamente,\nDiniz Alimentos`);
 
                         const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
-                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada por falta de vagas.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Alimentos`);
+                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Alimentos`);
 
                         btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ E-mail (Aprovar)</a>`;
                         btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">✉️ E-mail (Recusar)</a>`;
@@ -863,20 +862,6 @@ def create_schedule(req: ScheduleRequest):
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-
-        cur.execute(
-            "SELECT COUNT(*) FROM schedules WHERE schedule_time = %s;",
-            (req.schedule_date,)
-        )
-        total_agendamentos = cur.fetchone()[0]
-
-        if total_agendamentos >= 35:
-            cur.close()
-            conn.close()
-            raise HTTPException(
-                status_code=400,
-                detail=f"Limite atingido! A data {req.schedule_date} já possui o máximo de 35 agendamentos. Por favor, escolha outra data."
-            )
 
         cur.execute(
             """
