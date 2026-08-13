@@ -39,6 +39,8 @@ def send_email_notification(schedule_data: dict):
                 
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f9f9f9;">
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Fornecedor:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['supplier_name']}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Contato Celular:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('phone', '-')}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Contato E-mail:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('email', '-')}</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Placa do Veículo:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['truck_plate']}</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Peso da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['cargo_weight']} kg</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo de Armazenamento:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['storage_type']}</td></tr>
@@ -97,6 +99,8 @@ def init_db():
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS pallet_quantity INT DEFAULT 0;
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS access_code VARCHAR(20);
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Pendente';
+            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
+            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS email VARCHAR(100);
             """
         )
         conn.commit()
@@ -111,6 +115,8 @@ init_db()
 
 class ScheduleRequest(BaseModel):
     supplier_name: str
+    phone: str = ""
+    email: str = ""
     truck_plate: str
     cargo_weight: float
     storage_type: str
@@ -316,6 +322,14 @@ def get_form():
                         <input type="text" id="supplier" class="uppercase-input" required placeholder="Ex: SILVA ALIMENTOS LTDA">
                     </div>
                     <div class="form-group">
+                        <label for="phone">CELULAR / WHATSAPP:</label>
+                        <input type="text" id="phone" required placeholder="Ex: 11999998888 (com DDD)">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">E-MAIL DE CONTATO:</label>
+                        <input type="email" id="email" required placeholder="Ex: contato@fornecedor.com">
+                    </div>
+                    <div class="form-group">
                         <label for="plate">PLACA DO VEÍCULO:</label>
                         <input type="text" id="plate" class="uppercase-input" required placeholder="Ex: ABC1D23">
                     </div>
@@ -339,7 +353,7 @@ def get_form():
                         </select>
                     </div>
                     <div class="form-group" id="qtyGroup">
-                        <label for="qtyInput" id="qtyLabel">QUANTIDADE DE PALETES:</label>
+                        <label for="qtyLabel" id="qtyLabel">QUANTIDADE DE PALETES:</label>
                         <input type="number" id="qtyInput" value="0" min="0" placeholder="Ex: 26" required>
                     </div>
                     <div class="form-group">
@@ -389,8 +403,15 @@ def get_form():
 
                 const randomCode = generateRandomCode();
 
+                let cleanPhone = document.getElementById('phone').value.replace(/\D/g, '');
+                if (cleanPhone.length >= 10 && !cleanPhone.startsWith('55')) {
+                    cleanPhone = '55' + cleanPhone;
+                }
+
                 const payload = {
                     supplier_name: document.getElementById('supplier').value.toUpperCase(),
+                    phone: cleanPhone,
+                    email: document.getElementById('email').value.trim(),
                     truck_plate: document.getElementById('plate').value.toUpperCase(),
                     cargo_weight: parseFloat(document.getElementById('weight').value),
                     storage_type: document.getElementById('storage').value,
@@ -454,7 +475,7 @@ def list_schedules_page():
                 padding: 30px; 
                 border-radius: 12px; 
                 box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
-                max-width: 1300px; 
+                max-width: 1400px; 
                 margin: 0 auto; 
             }
             .header-bar {
@@ -522,36 +543,34 @@ def list_schedules_page():
             }
             .filter-group input:focus, .filter-group select:focus { outline: none; border-color: #0b192c; }
 
-            .action-btns { display: flex; gap: 4px; justify-content: center; }
-            .btn-approve { 
-                background-color: #28a745; 
+            .action-btns { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+            .btn-action {
                 color: white; 
-                border: none; 
-                padding: 6px 10px; 
+                padding: 4px 8px; 
                 border-radius: 4px; 
-                cursor: pointer; 
-                font-weight: 600; 
+                text-decoration: none; 
                 font-size: 11px; 
+                font-weight: bold; 
+                border: none;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 3px;
             }
-            .btn-approve:hover { background-color: #218838; }
-            
-            .btn-reject { 
-                background-color: #ffc107; 
-                color: #0b192c; 
-                border: none; 
-                padding: 6px 10px; 
-                border-radius: 4px; 
-                cursor: pointer; 
-                font-weight: 700; 
-                font-size: 11px; 
-            }
-            .btn-reject:hover { background-color: #e0a800; }
+            .btn-whats-app { background-color: #25D366; }
+            .btn-whats-app:hover { background-color: #1eb956; }
+            .btn-whats-rej { background-color: #ff4d4d; }
+            .btn-whats-rej:hover { background-color: #e63939; }
+            .btn-email-app { background-color: #007bff; }
+            .btn-email-app:hover { background-color: #0056b3; }
+            .btn-email-rej { background-color: #6c757d; }
+            .btn-email-rej:hover { background-color: #545b62; }
 
             .btn-delete { 
                 background-color: #dc3545; 
                 color: white; 
                 border: none; 
-                padding: 6px 10px; 
+                padding: 4px 8px; 
                 border-radius: 4px; 
                 cursor: pointer; 
                 font-weight: 600; 
@@ -571,7 +590,7 @@ def list_schedules_page():
             .status-recusado { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { padding: 12px 8px; border: 1px solid #e9ecef; text-align: center; font-size: 13px; }
+            th, td { padding: 10px 6px; border: 1px solid #e9ecef; text-align: center; font-size: 12px; }
             th { background-color: #0b192c; color: #ffffff; font-weight: 600; }
             tr:nth-child(even) { background-color: #f8f9fa; }
             tr:hover { background-color: #f1f3f5; }
@@ -579,7 +598,7 @@ def list_schedules_page():
             .code-badge { 
                 font-weight: 700; 
                 background: #eef2f5; 
-                padding: 4px 8px; 
+                padding: 4px 6px; 
                 border-radius: 4px; 
                 letter-spacing: 1px; 
                 color: #0b192c; 
@@ -643,18 +662,19 @@ def list_schedules_page():
                         <th>Senha</th>
                         <th>Status</th>
                         <th>Fornecedor</th>
+                        <th>Contato</th>
                         <th>Placa</th>
                         <th>Peso (kg)</th>
-                        <th>Armazenamento</th>
+                        <th>Armaz.</th>
                         <th>Tipo Carga</th>
-                        <th>Paletes / Vol.</th>
+                        <th>Paletes/Vol.</th>
                         <th>Guichê</th>
                         <th>Data Chegada</th>
-                        <th class="action-column">Ações de Controle</th>
+                        <th class="action-column">Ações de Resposta</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <tr><td colspan="12" class="no-data">Carregando agendamentos...</td></tr>
+                    <tr><td colspan="13" class="no-data">Carregando agendamentos...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -669,7 +689,7 @@ def list_schedules_page():
                     renderTable(allSchedules);
                 } catch (err) {
                     console.error(err);
-                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
+                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="13" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
                 }
             }
 
@@ -678,7 +698,7 @@ def list_schedules_page():
                 tbody.innerHTML = '';
 
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="12" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="13" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
                     return;
                 }
 
@@ -690,11 +710,31 @@ def list_schedules_page():
                     
                     const dockText = row.dock_id < 10 ? `Guichê 0${row.dock_id}` : `Guichê ${row.dock_id}`;
 
+                    const phoneNum = row.phone || '';
+                    const emailAddr = row.email || '';
+
+                    // TEXTOS AUTOMÁTICOS
+                    const textWhatsApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}. Guichê: ${row.dock_id}.`);
+                    const textWhatsReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado devido à lotação das vagas. Por favor, acesse nosso site e faça uma nova solicitação para outra data.`);
+
+                    const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
+                    const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\nGuichê: ${row.dock_id}\n\nAtenciosamente,\nDiniz Alimentos`);
+
+                    const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
+                    const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada por falta de vagas.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando uma nova data.\n\nAtenciosamente,\nDiniz Alimentos`);
+
+                    let btnWhats = phoneNum ? `<a class="btn-action btn-whats-app" href="https://wa.me/${phoneNum}?text=${textWhatsApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>
+                                               <a class="btn-action btn-whats-rej" href="https://wa.me/${phoneNum}?text=${textWhatsReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>` : '';
+
+                    let btnEmail = emailAddr ? `<a class="btn-action btn-email-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ E-mail (Aprovar)</a>
+                                                <a class="btn-action btn-email-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">✉️ E-mail (Recusar)</a>` : '';
+
                     tr.innerHTML = `
                         <td>${row.id}</td>
                         <td><span class="code-badge">${row.access_code || '-'}</span></td>
                         <td><span class="status-badge ${statusClass}">${row.status || 'Pendente'}</span></td>
                         <td><strong>${row.supplier_name}</strong></td>
+                        <td style="font-size:11px;">${phoneNum ? '📱 '+phoneNum : ''}<br>${emailAddr ? '✉️ '+emailAddr : ''}</td>
                         <td>${row.truck_plate}</td>
                         <td>${row.cargo_weight}</td>
                         <td>${row.storage_type}</td>
@@ -704,9 +744,9 @@ def list_schedules_page():
                         <td>${row.schedule_time}</td>
                         <td class="action-column">
                             <div class="action-btns">
-                                ${row.status !== 'Aprovado' ? `<button class="btn-approve" title="Aprovar" onclick="updateStatus(${row.id}, 'Aprovado')">✅</button>` : ''}
-                                ${row.status !== 'Recusado' ? `<button class="btn-reject" title="Recusar" onclick="updateStatus(${row.id}, 'Recusado')">❌</button>` : ''}
-                                <button class="btn-delete" title="Excluir" onclick="deleteSchedule(${row.id})">🗑️</button>
+                                ${btnWhats}
+                                ${btnEmail}
+                                <button class="btn-delete" title="Excluir" onclick="deleteSchedule(${row.id})">🗑️ Excluir</button>
                             </div>
                         </td>
                     `;
@@ -742,18 +782,14 @@ def list_schedules_page():
 
             async function updateStatus(id, newStatus) {
                 try {
-                    const res = await fetch(`/api/schedule/${id}/status`, {
+                    await fetch(`/api/schedule/${id}/status`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ status: newStatus })
                     });
-                    if (res.ok) {
-                        loadSchedules();
-                    } else {
-                        alert('Erro ao atualizar status.');
-                    }
+                    setTimeout(loadSchedules, 800);
                 } catch (err) {
-                    alert('Erro de conexão.');
+                    console.error('Erro ao atualizar status');
                 }
             }
 
@@ -806,13 +842,15 @@ def create_schedule(req: ScheduleRequest):
         cur.execute(
             """
             INSERT INTO schedules (
-                supplier_name, truck_plate, cargo_weight, storage_type, 
+                supplier_name, phone, email, truck_plate, cargo_weight, storage_type, 
                 cargo_type, pallet_quantity, dock_id, schedule_time, access_code, status
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendente');
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendente');
             """,
             (
                 req.supplier_name.upper(),
+                req.phone,
+                req.email,
                 req.truck_plate.upper(),
                 req.cargo_weight,
                 req.storage_type,
@@ -827,7 +865,7 @@ def create_schedule(req: ScheduleRequest):
         cur.close()
         conn.close()
 
-        # 4. DISPARA O E-MAIL DE NOTIFICAÇÃO
+        # 4. DISPARA O E-MAIL DE NOTIFICAÇÃO INTERNA
         send_email_notification(req.dict())
 
         return {"status": "sucesso", "mensagem": "Solicitação registrada com sucesso!"}
@@ -879,7 +917,8 @@ def list_schedules():
         cur.execute(
             """
             SELECT id, supplier_name, truck_plate, cargo_weight, storage_type, 
-                   cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), access_code, status
+                   cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), 
+                   access_code, status, phone, email
             FROM schedules
             ORDER BY supplier_name ASC;
             """
@@ -903,6 +942,8 @@ def list_schedules():
                     "schedule_time": r[8],
                     "access_code": r[9],
                     "status": r[10] if r[10] else "Pendente",
+                    "phone": r[11] if len(r) > 11 and r[11] else "",
+                    "email": r[12] if len(r) > 12 and r[12] else "",
                 }
             )
         return result
