@@ -33,7 +33,7 @@ def send_email_notification(schedule_data: dict):
         <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
             <div style="max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
                 <h2 style="color: #0b192c; border-bottom: 3px solid #ffc107; padding-bottom: 10px; margin-top: 0;">
-                    DINIZ FOODS - Novo Agendamento
+                    👨‍🍳 DINIZ ALIMENTOS - Novo Agendamento
                 </h2>
                 <p>Uma nova solicitação de agendamento foi registrada e está <strong>aguardando sua aprovação</strong>.</p>
                 
@@ -153,7 +153,7 @@ def get_form():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Diniz Foods - Agendamento de Carga</title>
+        <title>Diniz Alimentos - Agendamento de Carga</title>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             * { box-sizing: border-box; }
@@ -182,9 +182,10 @@ def get_form():
                 border-bottom: 4px solid #ffc107;
                 color: white;
             }
-            .brand-title { font-size: 24px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
+            .logo-icon { font-size: 42px; margin-bottom: 5px; display: block; }
+            .brand-title { font-size: 22px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
             .brand-title span { color: #ffc107; }
-            .slogan { font-size: 13px; color: #ffc107; font-weight: 600; margin-top: 6px; letter-spacing: 0.5px; }
+            .slogan { font-size: 13px; color: #ffc107; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px; }
             
             .info-box {
                 background-color: #fff9e6;
@@ -300,7 +301,8 @@ def get_form():
     <body>
         <div class="card">
             <div class="header-banner">
-                <div class="brand-title">DINIZ <span>FOODS</span></div>
+                <span class="logo-icon">👨‍🍳</span>
+                <div class="brand-title">DINIZ <span>ALIMENTOS</span></div>
                 <div class="slogan">COM A DINIZ VOCÊ FAZ MAIS!</div>
             </div>
 
@@ -487,7 +489,7 @@ def list_schedules_page():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Diniz Foods - Gestão de Agendamentos</title>
+        <title>Diniz Alimentos - Gestão de Agendamentos</title>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             * { box-sizing: border-box; }
@@ -499,10 +501,10 @@ def list_schedules_page():
             }
             .container { 
                 background: white; 
-                padding: 25px; 
+                padding: 30px; 
                 border-radius: 12px; 
                 box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
-                max-width: 100%; 
+                max-width: 1400px; 
                 margin: 0 auto; 
             }
             .header-bar {
@@ -512,12 +514,11 @@ def list_schedules_page():
                 border-bottom: 3px solid #ffc107;
                 padding-bottom: 15px;
                 margin-bottom: 20px;
-                flex-wrap: wrap;
-                gap: 15px;
             }
             .brand-info { display: flex; align-items: center; gap: 12px; }
-            .brand-info h2 { margin: 0; color: #0b192c; font-size: 20px; }
-            .brand-info p { margin: 0; color: #666; font-size: 11px; font-weight: 600; }
+            .brand-info .icon { font-size: 32px; }
+            .brand-info h2 { margin: 0; color: #0b192c; font-size: 22px; }
+            .brand-info p { margin: 0; color: #666; font-size: 12px; font-weight: 600; }
             
             .btn-group { display: flex; gap: 10px; }
             .btn { 
@@ -536,7 +537,7 @@ def list_schedules_page():
             .btn-pdf:hover { background-color: #1e3e62; }
             .btn-new { background-color: #ffc107; color: #0b192c; }
             .btn-new:hover { background-color: #e0a800; }
-            .btn-clear { background-color: #6c757d; color: white; padding: 9px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; }
+            .btn-clear { background-color: #6c757d; color: white; padding: 10px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; }
             .btn-clear:hover { background-color: #5a6268; }
 
             .filter-bar {
@@ -571,21 +572,7 @@ def list_schedules_page():
             }
             .filter-group input:focus, .filter-group select:focus { outline: none; border-color: #0b192c; }
 
-            /* CONTANEIR DA TABELA COM ROLAGEM HORIZONTA FIXA */
-            .table-responsive {
-                width: 100%;
-                overflow-x: auto;
-                border: 1px solid #e9ecef;
-                border-radius: 8px;
-            }
-
-            table { width: 100%; border-collapse: collapse; min-width: 1100px; }
-            th, td { padding: 12px 10px; border-bottom: 1px solid #e9ecef; text-align: center; font-size: 12px; }
-            th { background-color: #0b192c; color: #ffffff; font-weight: 600; white-space: nowrap; }
-            tr:nth-child(even) { background-color: #fcfcfc; }
-            tr:hover { background-color: #f1f3f5; }
-
-            .action-btns { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; }
+            .action-btns { display: flex; gap: 6px; justify-content: center; align-items: center; }
             .btn-action {
                 color: white; 
                 padding: 6px 10px; 
@@ -628,6 +615,12 @@ def list_schedules_page():
             .status-aprovado { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
             .status-recusado { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { padding: 10px 8px; border: 1px solid #e9ecef; text-align: center; font-size: 12px; }
+            th { background-color: #0b192c; color: #ffffff; font-weight: 600; }
+            tr:nth-child(even) { background-color: #f8f9fa; }
+            tr:hover { background-color: #f1f3f5; }
+            
             .code-badge { 
                 font-weight: 700; 
                 background: #eef2f5; 
@@ -643,11 +636,10 @@ def list_schedules_page():
                 body { background-color: #fff; padding: 0; }
                 .container { box-shadow: none; max-width: 100%; padding: 0; }
                 .no-print, .action-column, .filter-bar { display: none !important; }
-                .table-responsive { overflow: visible; border: none; }
                 .header-bar { border-bottom: 2px solid #000; padding-bottom: 10px; }
                 th { background-color: #eee !important; color: #000 !important; }
-                table { font-size: 11px; min-width: auto; }
-                th, td { padding: 6px; border: 1px solid #ccc; }
+                table { font-size: 11px; }
+                th, td { padding: 6px; }
             }
         </style>
     </head>
@@ -655,8 +647,9 @@ def list_schedules_page():
         <div class="container">
             <div class="header-bar no-print">
                 <div class="brand-info">
+                    <span class="icon">👨‍🍳</span>
                     <div>
-                        <h2>DINIZ FOODS - Gestão de Agendamentos</h2>
+                        <h2>DINIZ ALIMENTOS - Gestão de Agendamentos</h2>
                         <p>COM A DINIZ VOCÊ FAZ MAIS!</p>
                     </div>
                 </div>
@@ -688,29 +681,27 @@ def list_schedules_page():
                 <button class="btn-clear" onclick="clearFilters()">🔄 Limpar Filtros</button>
             </div>
 
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Senha</th>
-                            <th>Status</th>
-                            <th>Fornecedor</th>
-                            <th>Contato</th>
-                            <th>Placa</th>
-                            <th>Peso (kg)</th>
-                            <th>Armaz.</th>
-                            <th>Tipo Carga</th>
-                            <th>Qtd.</th>
-                            <th>Data</th>
-                            <th class="action-column">Ações (Aprovar / Recusar)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <tr><td colspan="12" class="no-data">Carregando agendamentos...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Senha</th>
+                        <th>Status</th>
+                        <th>Fornecedor</th>
+                        <th>Contato Escolhido</th>
+                        <th>Placa</th>
+                        <th>Peso (kg)</th>
+                        <th>Armaz.</th>
+                        <th>Tipo Carga</th>
+                        <th>Paletes/Vol.</th>
+                        <th>Data Chegada</th>
+                        <th class="action-column">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="12" class="no-data">Carregando agendamentos...</td></tr>
+                </tbody>
+            </table>
         </div>
 
         <script>
@@ -752,21 +743,21 @@ def list_schedules_page():
 
                     if (contactPref === 'whatsapp' || phoneNum) {
                         contactDisplay = `📱 ${phoneNum}`;
-                        const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Foods foi APROVADO. Sua pré-senha é: ${row.access_code}.`);
+                        const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}.`);
                         const textReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado. Por favor, acesse nosso site e faça uma nova solicitação.`);
                         
-                        btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">✅ Aprovar</a>`;
-                        btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">❌ Recusar</a>`;
+                        btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>`;
+                        btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>`;
                     } else if (contactPref === 'email' || emailAddr) {
                         contactDisplay = `✉️ ${emailAddr}`;
-                        const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Foods`);
-                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\n\nAtenciosamente,\nDiniz Foods`);
+                        const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
+                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\n\nAtenciosamente,\nDiniz Alimentos`);
 
-                        const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Foods`);
-                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Foods`);
+                        const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
+                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Alimentos`);
 
-                        btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✅ Aprovar</a>`;
-                        btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">❌ Recusar</a>`;
+                        btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ E-mail (Aprovar)</a>`;
+                        btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">✉️ E-mail (Recusar)</a>`;
                     }
 
                     tr.innerHTML = `
