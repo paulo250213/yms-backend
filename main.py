@@ -153,7 +153,7 @@ def get_form():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Diniz Alimentos - Agendamento de Carga</title>
+        <title>Diniz Foods - Agendamento de Carga</title>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             * { box-sizing: border-box; }
@@ -182,10 +182,9 @@ def get_form():
                 border-bottom: 4px solid #ffc107;
                 color: white;
             }
-            .logo-icon { font-size: 42px; margin-bottom: 5px; display: block; }
-            .brand-title { font-size: 22px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
+            .brand-title { font-size: 24px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
             .brand-title span { color: #ffc107; }
-            .slogan { font-size: 13px; color: #ffc107; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px; }
+            .slogan { font-size: 13px; color: #ffc107; font-weight: 600; margin-top: 6px; letter-spacing: 0.5px; }
             
             .info-box {
                 background-color: #fff9e6;
@@ -301,8 +300,7 @@ def get_form():
     <body>
         <div class="card">
             <div class="header-banner">
-                <span class="logo-icon">👨‍🍳</span>
-                <div class="brand-title">DINIZ <span>ALIMENTOS</span></div>
+                <div class="brand-title">DINIZ <span>FOODS</span></div>
                 <div class="slogan">COM A DINIZ VOCÊ FAZ MAIS!</div>
             </div>
 
@@ -489,7 +487,7 @@ def list_schedules_page():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Diniz Alimentos - Gestão de Agendamentos</title>
+        <title>Diniz Foods - Gestão de Agendamentos</title>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             * { box-sizing: border-box; }
@@ -516,7 +514,6 @@ def list_schedules_page():
                 margin-bottom: 20px;
             }
             .brand-info { display: flex; align-items: center; gap: 12px; }
-            .brand-info .icon { font-size: 32px; }
             .brand-info h2 { margin: 0; color: #0b192c; font-size: 22px; }
             .brand-info p { margin: 0; color: #666; font-size: 12px; font-weight: 600; }
             
@@ -647,9 +644,8 @@ def list_schedules_page():
         <div class="container">
             <div class="header-bar no-print">
                 <div class="brand-info">
-                    <span class="icon">👨‍🍳</span>
                     <div>
-                        <h2>DINIZ ALIMENTOS - Gestão de Agendamentos</h2>
+                        <h2>DINIZ FOODS - Gestão de Agendamentos</h2>
                         <p>COM A DINIZ VOCÊ FAZ MAIS!</p>
                     </div>
                 </div>
@@ -743,18 +739,18 @@ def list_schedules_page():
 
                     if (contactPref === 'whatsapp' || phoneNum) {
                         contactDisplay = `📱 ${phoneNum}`;
-                        const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}.`);
+                        const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Foods foi APROVADO. Sua pré-senha é: ${row.access_code}.`);
                         const textReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado. Por favor, acesse nosso site e faça uma nova solicitação.`);
                         
                         btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>`;
                         btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>`;
                     } else if (contactPref === 'email' || emailAddr) {
                         contactDisplay = `✉️ ${emailAddr}`;
-                        const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
-                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\n\nAtenciosamente,\nDiniz Alimentos`);
+                        const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Foods`);
+                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\n\nAtenciosamente,\nDiniz Foods`);
 
-                        const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
-                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Alimentos`);
+                        const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Foods`);
+                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Foods`);
 
                         btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ E-mail (Aprovar)</a>`;
                         btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">✉️ E-mail (Recusar)</a>`;
