@@ -141,6 +141,15 @@ class StatusUpdateRequest(BaseModel):
     status: str
 
 
+# --- ROTA PARA O LOGOTIPO / BANNER ---
+@app.get("/logo_banner.png")
+def get_banner():
+    banner_path = "logo_banner.png"
+    if os.path.exists(banner_path):
+        return FileResponse(banner_path, media_type="image/png")
+    raise HTTPException(status_code=404, detail="Imagem do logotipo não encontrada no servidor.")
+
+
 # --- ROTA PARA DISPONIBILIZAR O DOWNLOAD DO MANUAL EM PDF ---
 @app.get("/manual.pdf")
 def get_manual():
@@ -197,16 +206,17 @@ def get_form():
                 overflow: hidden;
             }
             .header-banner {
-                background: linear-gradient(90deg, #0b192c 0%, #1e3e62 100%);
-                padding: 25px 20px;
-                text-align: center;
+                width: 100%;
+                background-color: #031027;
                 border-bottom: 4px solid #ffc107;
-                color: white;
+                line-height: 0;
             }
-            .logo-icon { font-size: 42px; margin-bottom: 5px; display: block; }
-            .brand-title { font-size: 22px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
-            .brand-title span { color: #ffc107; }
-            .slogan { font-size: 13px; color: #ffc107; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px; }
+            .header-banner img {
+                width: 100%;
+                height: auto;
+                display: block;
+                object-fit: contain;
+            }
             
             .info-box {
                 background-color: #fff9e6;
@@ -322,9 +332,7 @@ def get_form():
     <body>
         <div class="card">
             <div class="header-banner">
-                <span class="logo-icon">👨‍🍳</span>
-                <div class="brand-title">DINIZ <span>ALIMENTOS</span></div>
-                <div class="slogan">COM A DINIZ VOCÊ FAZ MAIS!</div>
+                <img src="/logo_banner.png" alt="Diniz Alimentos - Com a Diniz você faz mais!">
             </div>
 
             <div class="info-box">
@@ -536,10 +544,11 @@ def list_schedules_page():
                 padding-bottom: 15px;
                 margin-bottom: 20px;
             }
-            .brand-info { display: flex; align-items: center; gap: 12px; }
-            .brand-info .icon { font-size: 32px; }
-            .brand-info h2 { margin: 0; color: #0b192c; font-size: 22px; }
-            .brand-info p { margin: 0; color: #666; font-size: 12px; font-weight: 600; }
+            .brand-banner-img {
+                max-height: 75px;
+                border-radius: 6px;
+                object-fit: contain;
+            }
             
             .btn-group { display: flex; gap: 10px; }
             .btn { 
@@ -667,13 +676,7 @@ def list_schedules_page():
     <body>
         <div class="container">
             <div class="header-bar no-print">
-                <div class="brand-info">
-                    <span class="icon">👨‍🍳</span>
-                    <div>
-                        <h2>DINIZ ALIMENTOS - Gestão de Agendamentos</h2>
-                        <p>COM A DINIZ VOCÊ FAZ MAIS!</p>
-                    </div>
-                </div>
+                <img src="/logo_banner.png" alt="Diniz Alimentos" class="brand-banner-img">
                 <div class="btn-group">
                     <button class="btn btn-pdf" onclick="window.print()">📄 Exportar PDF / Imprimir</button>
                     <a href="/" class="btn btn-new">➕ Novo Agendamento</a>
