@@ -647,9 +647,9 @@ def list_schedules_page():
         <div class="container">
             <div class="header-bar no-print">
                 <div class="brand-info">
-                    <span class="icon">👨‍🍳</span>
+                    <span class="icon"></span>
                     <div>
-                        <h2>DINIZ ALIMENTOS - Gestão de Agendamentos</h2>
+                        <h2>DINIZ FOODS - Gestão de Agendamentos</h2>
                         <p>COM A DINIZ VOCÊ FAZ MAIS!</p>
                     </div>
                 </div>
