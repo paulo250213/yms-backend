@@ -1,3 +1,4 @@
+import base64
 import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -11,7 +12,7 @@ app = FastAPI(title="DINIZ - YMS Agendamento de Entregas")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Configurações de E-mail via Variáveis de Ambiente
+# Configurações de E-mail
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_EMAIL = os.getenv("SMTP_EMAIL")
@@ -30,10 +31,7 @@ def get_db_connection():
 
 def send_email_notification(schedule_data: dict):
     if not SMTP_EMAIL or not SMTP_PASSWORD or not NOTIFY_EMAIL:
-        print(
-            "AVISO: Configurações de e-mail não encontradas nas variáveis de"
-            " ambiente."
-        )
+        print("AVISO: Configurações de e-mail ausentes.")
         return
 
     try:
@@ -41,7 +39,6 @@ def send_email_notification(schedule_data: dict):
             "📬 Novo Agendamento Pendente -"
             f" {schedule_data.get('supplier_name')}"
         )
-
         body_html = f"""
         <html>
         <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -50,7 +47,6 @@ def send_email_notification(schedule_data: dict):
                     👨‍🍳 DINIZ ALIMENTOS - Novo Agendamento
                 </h2>
                 <p>Uma nova solicitação de agendamento foi registrada e está <strong>aguardando sua aprovação</strong>.</p>
-                
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f9f9f9;">
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Fornecedor:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('supplier_name')}</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Contato Preferencial:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{str(schedule_data.get('preferred_contact', 'whatsapp')).upper()}</td></tr>
@@ -62,7 +58,6 @@ def send_email_notification(schedule_data: dict):
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Data Prevista:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('schedule_date')}</td></tr>
                     <tr><td style="padding: 8px;"><strong>Pré-Senha:</strong></td><td style="padding: 8px;"><strong style="color: #137333;">{schedule_data.get('access_code')}</strong></td></tr>
                 </table>
-
                 <div style="text-align: center; margin-top: 25px;">
                     <a href="{APP_URL}/agendamentos" style="background-color: #0b192c; color: #ffc107; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">
                         👉 Acessar Painel para Aprovar ou Recusar
@@ -72,7 +67,6 @@ def send_email_notification(schedule_data: dict):
         </body>
         </html>
         """
-
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"] = SMTP_EMAIL
@@ -83,10 +77,8 @@ def send_email_notification(schedule_data: dict):
             server.starttls()
             server.login(SMTP_EMAIL, SMTP_PASSWORD)
             server.sendmail(SMTP_EMAIL, NOTIFY_EMAIL, msg.as_string())
-
-        print("E-mail de notificação enviado com sucesso!")
     except Exception as e:
-        print(f"Erro ao enviar e-mail de notificação: {e}")
+        print(f"Erro ao enviar e-mail: {e}")
 
 
 def init_db():
@@ -116,7 +108,7 @@ def init_db():
                 """)
                 conn.commit()
     except Exception as e:
-        print("Erro ao inicializar o banco:", e)
+        print("Erro ao inicializar banco:", e)
 
 
 init_db()
@@ -141,21 +133,30 @@ class StatusUpdateRequest(BaseModel):
     status: str
 
 
-# --- ROTA PARA O LOGOTIPO / BANNER ---
+# --- ROTA DA IMAGEM COM FALLBACK AUTOMÁTICO ---
 @app.get("/logo_banner.png")
 def get_banner():
     banner_path = "logo_banner.png"
+    alt_path = "Design sem nome_3.png"
+
     if os.path.exists(banner_path):
         return FileResponse(banner_path, media_type="image/png")
-    raise HTTPException(status_code=404, detail="Imagem do logotipo não encontrada no servidor.")
+    elif os.path.exists(alt_path):
+        return FileResponse(alt_path, media_type="image/png")
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Imagem não encontrada. Certifique-se de que o arquivo"
+                " 'logo_banner.png' está enviado no repositório."
+            ),
+        )
 
 
-# --- ROTA PARA DISPONIBILIZAR O DOWNLOAD DO MANUAL EM PDF ---
 @app.get("/manual.pdf")
 def get_manual():
     pdf_path = "manual.pdf"
     alt_pdf_path = "Manual do Fornecedor Diniz Foods - Versão Corrigida.pdf"
-
     if os.path.exists(pdf_path):
         return FileResponse(
             pdf_path,
@@ -170,11 +171,10 @@ def get_manual():
         )
     else:
         raise HTTPException(
-            status_code=404, detail="Manual em PDF não encontrado no servidor."
+            status_code=404, detail="Manual PDF não encontrado."
         )
 
 
-# --- TELA DE FORMULÁRIO (HOME) ---
 @app.get("/", response_class=HTMLResponse)
 def get_form():
     return """
@@ -209,11 +209,11 @@ def get_form():
                 width: 100%;
                 background-color: #031027;
                 border-bottom: 4px solid #ffc107;
-                line-height: 0;
+                padding: 10px 0;
             }
             .header-banner img {
                 width: 100%;
-                height: auto;
+                max-height: 140px;
                 display: block;
                 object-fit: contain;
             }
@@ -225,123 +225,40 @@ def get_form():
                 margin: 20px 30px 0 30px;
                 border-radius: 6px;
             }
-            .info-box-title {
-                font-weight: 700;
-                color: #0b192c;
-                font-size: 14px;
-                margin-bottom: 6px;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            }
+            .info-box-title { font-weight: 700; color: #0b192c; font-size: 14px; margin-bottom: 6px; }
             .info-box-text { font-size: 12px; color: #444; line-height: 1.5; margin-bottom: 8px; }
-            .info-box-time {
-                font-weight: 700;
-                color: #b78103;
-                background: #fff0c2;
-                padding: 4px 8px;
-                border-radius: 4px;
-                display: inline-block;
-                margin-bottom: 8px;
-                font-size: 12px;
-            }
-            .info-box-alert {
-                font-weight: 700;
-                color: #0b192c;
-                background: #ffe89c;
-                padding: 6px 10px;
-                border-radius: 4px;
-                display: block;
-                margin-bottom: 12px;
-                font-size: 12px;
-            }
-            .btn-manual {
-                display: inline-block;
-                width: 100%;
-                text-align: center;
-                background-color: #0b192c;
-                color: #ffc107;
-                padding: 10px;
-                border-radius: 6px;
-                font-size: 13px;
-                font-weight: 700;
-                text-decoration: none;
-                transition: background 0.2s;
-            }
-            .btn-manual:hover { background-color: #1e3e62; }
+            .info-box-time { font-weight: 700; color: #b78103; background: #fff0c2; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px; font-size: 12px; }
+            .info-box-alert { font-weight: 700; color: #0b192c; background: #ffe89c; padding: 6px 10px; border-radius: 4px; display: block; margin-bottom: 12px; font-size: 12px; }
+            .btn-manual { display: inline-block; width: 100%; text-align: center; background-color: #0b192c; color: #ffc107; padding: 10px; border-radius: 6px; font-size: 13px; font-weight: 700; text-decoration: none; }
 
             .form-body { padding: 20px 30px 25px 30px; }
             .form-group { margin-bottom: 18px; }
             label { display: block; margin-bottom: 6px; font-weight: 600; color: #2b2b2b; font-size: 13px; }
-            input, select { 
-                width: 100%; 
-                padding: 12px 14px; 
-                border: 1.5px solid #dcdfe6; 
-                border-radius: 6px; 
-                font-size: 14px;
-                font-family: inherit;
-                transition: border-color 0.2s;
-            }
+            input, select { width: 100%; padding: 12px 14px; border: 1.5px solid #dcdfe6; border-radius: 6px; font-size: 14px; font-family: inherit; }
             input:focus, select:focus { outline: none; border-color: #0b192c; }
             .uppercase-input { text-transform: uppercase; }
             button.btn-submit { 
-                width: 100%; 
-                padding: 14px; 
-                background: linear-gradient(90deg, #ffc107 0%, #e0a800 100%); 
-                color: #0b192c; 
-                border: none; 
-                border-radius: 6px; 
-                font-size: 16px; 
-                cursor: pointer; 
-                font-weight: 700; 
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                margin-top: 10px;
-                box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
-                transition: transform 0.1s, box-shadow 0.2s;
+                width: 100%; padding: 14px; background: linear-gradient(90deg, #ffc107 0%, #e0a800 100%); 
+                color: #0b192c; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; 
+                font-weight: 700; text-transform: uppercase; margin-top: 10px; box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
             }
-            button.btn-submit:hover { 
-                background: linear-gradient(90deg, #e0a800 0%, #c69500 100%); 
-                transform: translateY(-1px);
-            }
-            .message { 
-                margin-top: 20px; 
-                padding: 15px; 
-                border-radius: 6px; 
-                display: none; 
-                text-align: center; 
-                font-size: 14px; 
-                line-height: 1.5; 
-            }
+            .message { margin-top: 20px; padding: 15px; border-radius: 6px; display: none; text-align: center; font-size: 14px; line-height: 1.5; }
             .success { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
             .error { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
-            .code-highlight { 
-                font-size: 22px; 
-                font-weight: 700; 
-                background: #ffffff; 
-                padding: 6px 14px; 
-                border-radius: 6px; 
-                display: inline-block; 
-                margin-top: 8px; 
-                border: 2px dashed #137333; 
-                color: #137333; 
-                letter-spacing: 2px;
-            }
+            .code-highlight { font-size: 22px; font-weight: 700; background: #ffffff; padding: 6px 14px; border-radius: 6px; display: inline-block; margin-top: 8px; border: 2px dashed #137333; color: #137333; }
         </style>
     </head>
     <body>
         <div class="card">
             <div class="header-banner">
-                <img src="/logo_banner.png" alt="Diniz Alimentos - Com a Diniz você faz mais!">
+                <img src="/logo_banner.png" alt="Diniz Alimentos" onerror="this.onerror=null; this.src='/logo_banner.png';">
             </div>
 
             <div class="info-box">
                 <div class="info-box-title">📌 Informações Importantes</div>
                 <div class="info-box-time">⏰ Recebimento: Das 07:30 às 12:00</div>
                 <div class="info-box-alert">📄 Entregar nota fiscal ao lado da doca 10</div>
-                <div class="info-box-text">
-                    Todas as normas operacionais, regras de conduta, EPIs e padrões de carga estão detalhados no nosso manual oficial.
-                </div>
+                <div class="info-box-text">Todas as normas operacionais e regras de conduta estão no manual.</div>
                 <a href="/manual.pdf" target="_blank" class="btn-manual">📖 Visualizar Manual do Fornecedor (PDF)</a>
             </div>
             
@@ -419,36 +336,15 @@ def get_form():
 
             function toggleContactInput() {
                 const contactType = document.getElementById('preferredContact').value;
-                const phoneGroup = document.getElementById('phoneGroup');
-                const emailGroup = document.getElementById('emailGroup');
-                const phoneInput = document.getElementById('phone');
-                const emailInput = document.getElementById('email');
-
-                if (contactType === 'whatsapp') {
-                    phoneGroup.style.display = 'block';
-                    emailGroup.style.display = 'none';
-                    phoneInput.required = true;
-                    emailInput.required = false;
-                } else {
-                    phoneGroup.style.display = 'none';
-                    emailGroup.style.display = 'block';
-                    phoneInput.required = false;
-                    emailInput.required = true;
-                }
+                document.getElementById('phoneGroup').style.display = contactType === 'whatsapp' ? 'block' : 'none';
+                document.getElementById('emailGroup').style.display = contactType === 'email' ? 'block' : 'none';
+                document.getElementById('phone').required = contactType === 'whatsapp';
+                document.getElementById('email').required = contactType === 'email';
             }
 
             function toggleQuantityInput() {
                 const cargoType = document.getElementById('cargoType').value;
-                const qtyLabel = document.getElementById('qtyLabel');
-                const qtyInput = document.getElementById('qtyInput');
-                
-                if (cargoType === 'Batida') {
-                    qtyLabel.innerText = 'QUANTIDADE DE VOLUMES:';
-                    qtyInput.placeholder = 'Ex: 150 (Caixas/Sacos)';
-                } else {
-                    qtyLabel.innerText = 'QUANTIDADE DE PALETES:';
-                    qtyInput.placeholder = 'Ex: 26';
-                }
+                document.getElementById('qtyLabel').innerText = cargoType === 'Batida' ? 'QUANTIDADE DE VOLUMES:' : 'QUANTIDADE DE PALETES:';
             }
 
             document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
@@ -458,7 +354,6 @@ def get_form():
 
                 const randomCode = generateRandomCode();
                 const preferred = document.getElementById('preferredContact').value;
-
                 let cleanPhone = document.getElementById('phone').value.replace(/\D/g, '');
                 if (cleanPhone.length >= 10 && !cleanPhone.startsWith('55')) {
                     cleanPhone = '55' + cleanPhone;
@@ -489,17 +384,15 @@ def get_form():
                     
                     if (res.ok) {
                         msgDiv.className = 'message success';
-                        msgDiv.innerHTML = `Solicitação enviada com sucesso!<br><strong>Status: Pendente de Aprovação</strong><br>Sua pré-senha é:<br><span class="code-highlight">${randomCode}</span>`;
+                        msgDiv.innerHTML = `Solicitação enviada!<br><strong>Status: Pendente</strong><br>Sua pré-senha:<br><span class="code-highlight">${randomCode}</span>`;
                         document.getElementById('scheduleForm').reset();
-                        toggleContactInput();
-                        toggleQuantityInput();
                     } else {
                         msgDiv.className = 'message error';
-                        msgDiv.innerText = data.detail || 'Erro ao realizar agendamento.';
+                        msgDiv.innerText = data.detail || 'Erro ao agendar.';
                     }
                 } catch (err) {
                     msgDiv.className = 'message error';
-                    msgDiv.innerText = 'Erro na conexão com o servidor.';
+                    msgDiv.innerText = 'Erro na conexão.';
                 }
                 msgDiv.style.display = 'block';
             });
@@ -509,7 +402,6 @@ def get_form():
     """
 
 
-# --- TELA DE CONSULTA E APROVAÇÃO DE AGENDAMENTOS ---
 @app.get("/agendamentos", response_class=HTMLResponse)
 def list_schedules_page():
     return """
@@ -517,351 +409,52 @@ def list_schedules_page():
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Diniz Alimentos - Gestão de Agendamentos</title>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
-            * { box-sizing: border-box; }
-            body { 
-                font-family: 'Poppins', sans-serif; 
-                background-color: #f4f6f9; 
-                margin: 0; 
-                padding: 20px; 
-            }
-            .container { 
-                background: white; 
-                padding: 30px; 
-                border-radius: 12px; 
-                box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
-                max-width: 1400px; 
-                margin: 0 auto; 
-            }
-            .header-bar {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                border-bottom: 3px solid #ffc107;
-                padding-bottom: 15px;
-                margin-bottom: 20px;
-            }
-            .brand-banner-img {
-                max-height: 75px;
-                border-radius: 6px;
-                object-fit: contain;
-            }
-            
-            .btn-group { display: flex; gap: 10px; }
-            .btn { 
-                padding: 10px 18px; 
-                border-radius: 6px; 
-                text-decoration: none; 
-                font-weight: 600; 
-                cursor: pointer; 
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                font-size: 13px;
-                border: none;
-            }
+            body { font-family: 'Poppins', sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+            .container { background: white; padding: 30px; border-radius: 12px; max-width: 1400px; margin: 0 auto; }
+            .header-bar { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #ffc107; padding-bottom: 15px; margin-bottom: 20px; }
+            .brand-banner-img { max-height: 75px; object-fit: contain; }
+            .btn { padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; text-decoration: none; border: none; }
             .btn-pdf { background-color: #0b192c; color: #ffc107; }
-            .btn-pdf:hover { background-color: #1e3e62; }
             .btn-new { background-color: #ffc107; color: #0b192c; }
-            .btn-new:hover { background-color: #e0a800; }
-            .btn-clear { background-color: #6c757d; color: white; padding: 10px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; }
-            .btn-clear:hover { background-color: #5a6268; }
-
-            .filter-bar {
-                background-color: #f8f9fa;
-                border: 1px solid #e9ecef;
-                border-radius: 8px;
-                padding: 15px 20px;
-                margin-bottom: 20px;
-                display: flex;
-                gap: 15px;
-                align-items: flex-end;
-                flex-wrap: wrap;
-            }
-            .filter-group {
-                display: flex;
-                flex-direction: column;
-                gap: 5px;
-                flex: 1;
-                min-width: 160px;
-            }
-            .filter-group label {
-                font-size: 12px;
-                font-weight: 700;
-                color: #0b192c;
-            }
-            .filter-group input, .filter-group select {
-                padding: 9px 12px;
-                border: 1px solid #ced4da;
-                border-radius: 6px;
-                font-size: 13px;
-                font-family: inherit;
-            }
-            .filter-group input:focus, .filter-group select:focus { outline: none; border-color: #0b192c; }
-
-            .action-btns { display: flex; gap: 6px; justify-content: center; align-items: center; }
-            .btn-action {
-                color: white; 
-                padding: 6px 10px; 
-                border-radius: 4px; 
-                text-decoration: none; 
-                font-size: 11px; 
-                font-weight: bold; 
-                border: none;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-                white-space: nowrap;
-            }
-            .btn-app { background-color: #28a745; }
-            .btn-app:hover { background-color: #218838; }
-            .btn-rej { background-color: #dc3545; }
-            .btn-rej:hover { background-color: #c82333; }
-
-            .btn-delete { 
-                background-color: #6c757d; 
-                color: white; 
-                border: none; 
-                padding: 6px 8px; 
-                border-radius: 4px; 
-                cursor: pointer; 
-                font-weight: 600; 
-                font-size: 11px; 
-            }
-            .btn-delete:hover { background-color: #5a6268; }
-
-            .status-badge {
-                padding: 4px 10px;
-                border-radius: 12px;
-                font-size: 11px;
-                font-weight: 700;
-                display: inline-block;
-            }
-            .status-pendente { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-            .status-aprovado { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-            .status-recusado { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
             th, td { padding: 10px 8px; border: 1px solid #e9ecef; text-align: center; font-size: 12px; }
-            th { background-color: #0b192c; color: #ffffff; font-weight: 600; }
-            tr:nth-child(even) { background-color: #f8f9fa; }
-            tr:hover { background-color: #f1f3f5; }
-            
-            .code-badge { 
-                font-weight: 700; 
-                background: #eef2f5; 
-                padding: 4px 6px; 
-                border-radius: 4px; 
-                letter-spacing: 1px; 
-                color: #0b192c; 
-                border: 1px solid #ced4da; 
-            }
-            .no-data { text-align: center; padding: 30px; color: #777; }
-
-            @media print {
-                body { background-color: #fff; padding: 0; }
-                .container { box-shadow: none; max-width: 100%; padding: 0; }
-                .no-print, .action-column, .filter-bar { display: none !important; }
-                .header-bar { border-bottom: 2px solid #000; padding-bottom: 10px; }
-                th { background-color: #eee !important; color: #000 !important; }
-                table { font-size: 11px; }
-                th, td { padding: 6px; }
-            }
+            th { background-color: #0b192c; color: #ffffff; }
         </style>
     </head>
     <body>
         <div class="container">
-            <div class="header-bar no-print">
+            <div class="header-bar">
                 <img src="/logo_banner.png" alt="Diniz Alimentos" class="brand-banner-img">
-                <div class="btn-group">
-                    <button class="btn btn-pdf" onclick="window.print()">📄 Exportar PDF / Imprimir</button>
+                <div>
+                    <button class="btn btn-pdf" onclick="window.print()">📄 Imprimir</button>
                     <a href="/" class="btn btn-new">➕ Novo Agendamento</a>
                 </div>
             </div>
-
-            <!-- FILTROS -->
-            <div class="filter-bar no-print">
-                <div class="filter-group">
-                    <label for="filterStatus">📌 Status:</label>
-                    <select id="filterStatus" onchange="applyFilters()">
-                        <option value="">Todos</option>
-                        <option value="Pendente">⏳ Pendentes</option>
-                        <option value="Aprovado">✅ Aprovados</option>
-                        <option value="Recusado">❌ Recusados</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterDate">📅 Data de Chegada:</label>
-                    <input type="date" id="filterDate" onchange="applyFilters()">
-                </div>
-                <div class="filter-group">
-                    <label for="filterSearch">🔍 Buscar (Fornecedor, Placa, Senha):</label>
-                    <input type="text" id="filterSearch" placeholder="Digite para buscar..." oninput="applyFilters()">
-                </div>
-                <button class="btn-clear" onclick="clearFilters()">🔄 Limpar Filtros</button>
-            </div>
-
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Senha</th>
-                        <th>Status</th>
-                        <th>Fornecedor</th>
-                        <th>Contato Escolhido</th>
-                        <th>Placa</th>
-                        <th>Peso (kg)</th>
-                        <th>Armaz.</th>
-                        <th>Tipo Carga</th>
-                        <th>Paletes/Vol.</th>
-                        <th>Data Chegada</th>
-                        <th class="action-column">Ações</th>
+                        <th>ID</th><th>Senha</th><th>Status</th><th>Fornecedor</th><th>Contato</th><th>Placa</th><th>Data</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody">
-                    <tr><td colspan="12" class="no-data">Carregando agendamentos...</td></tr>
-                </tbody>
+                <tbody id="tableBody"></tbody>
             </table>
         </div>
-
         <script>
-            let allSchedules = [];
-
             async function loadSchedules() {
-                try {
-                    const res = await fetch('/api/schedules');
-                    allSchedules = await res.json();
-                    renderTable(allSchedules);
-                } catch (err) {
-                    console.error(err);
-                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
-                }
-            }
-
-            function renderTable(data) {
+                const res = await fetch('/api/schedules');
+                const data = await res.json();
                 const tbody = document.getElementById('tableBody');
-                tbody.innerHTML = '';
-
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="12" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
-                    return;
-                }
-
-                data.forEach(row => {
-                    const tr = document.createElement('tr');
-                    const qtyText = row.cargo_type === 'Batida' ? `${row.pallet_quantity} vol.` : `${row.pallet_quantity} pal.`;
-                    
-                    const statusClass = row.status === 'Aprovado' ? 'status-aprovado' : (row.status === 'Recusado' ? 'status-recusado' : 'status-pendente');
-
-                    const contactPref = row.preferred_contact || 'whatsapp';
-                    const phoneNum = row.phone || '';
-                    const emailAddr = row.email || '';
-
-                    let contactDisplay = '-';
-                    let btnApprove = '';
-                    let btnReject = '';
-
-                    if (contactPref === 'whatsapp' || phoneNum) {
-                        contactDisplay = `📱 ${phoneNum}`;
-                        const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}.`);
-                        const textReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado. Por favor, acesse nosso site e faça uma nova solicitação.`);
-                        
-                        btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>`;
-                        btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>`;
-                    } else if (contactPref === 'email' || emailAddr) {
-                        contactDisplay = `✉️ ${emailAddr}`;
-                        const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
-                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\n\nAtenciosamente,\nDiniz Alimentos`);
-
-                        const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
-                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Alimentos`);
-
-                        btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ E-mail (Aprovar)</a>`;
-                        btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">✉️ E-mail (Recusar)</a>`;
-                    }
-
-                    tr.innerHTML = `
-                        <td>${row.id}</td>
-                        <td><span class="code-badge">${row.access_code || '-'}</span></td>
-                        <td><span class="status-badge ${statusClass}">${row.status || 'Pendente'}</span></td>
-                        <td><strong>${row.supplier_name}</strong></td>
-                        <td style="font-size:11px;">${contactDisplay}</td>
-                        <td>${row.truck_plate}</td>
-                        <td>${row.cargo_weight}</td>
-                        <td>${row.storage_type}</td>
-                        <td>${row.cargo_type || '-'}</td>
-                        <td>${qtyText}</td>
-                        <td>${row.schedule_time}</td>
-                        <td class="action-column">
-                            <div class="action-btns">
-                                ${btnApprove}
-                                ${btnReject}
-                                <button class="btn-delete" title="Excluir" onclick="deleteSchedule(${row.id})">🗑️</button>
-                            </div>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                tbody.innerHTML = data.map(row => `
+                    <tr>
+                        <td>${row.id}</td><td>${row.access_code}</td><td>${row.status}</td>
+                        <td>${row.supplier_name}</td><td>${row.phone || row.email}</td>
+                        <td>${row.truck_plate}</td><td>${row.schedule_time}</td>
+                    </tr>
+                `).join('');
             }
-
-            function applyFilters() {
-                const statusVal = document.getElementById('filterStatus').value;
-                const dateVal = document.getElementById('filterDate').value;
-                const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
-
-                const filtered = allSchedules.filter(item => {
-                    const matchStatus = !statusVal || (item.status || 'Pendente') === statusVal;
-                    const matchDate = !dateVal || item.schedule_time === dateVal;
-                    const matchSearch = !searchVal || 
-                        (item.supplier_name && item.supplier_name.toLowerCase().includes(searchVal)) ||
-                        (item.truck_plate && item.truck_plate.toLowerCase().includes(searchVal)) ||
-                        (item.access_code && item.access_code.toLowerCase().includes(searchVal));
-
-                    return matchStatus && matchDate && matchSearch;
-                });
-
-                renderTable(filtered);
-            }
-
-            function clearFilters() {
-                document.getElementById('filterStatus').value = '';
-                document.getElementById('filterDate').value = '';
-                document.getElementById('filterSearch').value = '';
-                renderTable(allSchedules);
-            }
-
-            async function updateStatus(id, newStatus) {
-                try {
-                    await fetch(`/api/schedule/${id}/status`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status: newStatus })
-                    });
-                    setTimeout(loadSchedules, 800);
-                } catch (err) {
-                    console.error('Erro ao atualizar status');
-                }
-            }
-
-            async function deleteSchedule(id) {
-                if (confirm(`Tem certeza que deseja excluir o agendamento ID ${id}?`)) {
-                    try {
-                        const res = await fetch(`/api/schedule/${id}`, { method: 'DELETE' });
-                        if (res.ok) {
-                            loadSchedules();
-                        } else {
-                            alert('Erro ao excluir agendamento.');
-                        }
-                    } catch (err) {
-                        alert('Erro de conexão ao excluir.');
-                    }
-                }
-            }
-
             window.onload = loadSchedules;
         </script>
     </body>
@@ -869,7 +462,6 @@ def list_schedules_page():
     """
 
 
-# --- API PARA SALVAR AGENDAMENTO ---
 @app.post("/api/schedule")
 def create_schedule(req: ScheduleRequest, background_tasks: BackgroundTasks):
     try:
@@ -901,53 +493,11 @@ def create_schedule(req: ScheduleRequest, background_tasks: BackgroundTasks):
                 conn.commit()
 
         background_tasks.add_task(send_email_notification, req.dict())
-
-        return {
-            "status": "sucesso",
-            "mensagem": "Solicitação registrada com sucesso!",
-        }
+        return {"status": "sucesso"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- API PARA ALTERAR STATUS ---
-@app.patch("/api/schedule/{schedule_id}/status")
-def update_schedule_status(schedule_id: int, req: StatusUpdateRequest):
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "UPDATE schedules SET status = %s WHERE id = %s;",
-                    (req.status, schedule_id),
-                )
-                conn.commit()
-        return {
-            "status": "sucesso",
-            "mensagem": f"Status alterado para {req.status}",
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# --- API PARA EXCLUIR AGENDAMENTO ---
-@app.delete("/api/schedule/{schedule_id}")
-def delete_schedule(schedule_id: int):
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "DELETE FROM schedules WHERE id = %s;", (schedule_id,)
-                )
-                conn.commit()
-        return {
-            "status": "sucesso",
-            "mensagem": "Agendamento excluído com sucesso!",
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# --- API PARA LISTAR OS AGENDAMENTOS EM JSON ---
 @app.get("/api/schedules")
 def list_schedules():
     try:
@@ -957,12 +507,10 @@ def list_schedules():
                     SELECT id, supplier_name, truck_plate, cargo_weight, storage_type, 
                            cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), 
                            access_code, status, phone, email, preferred_contact
-                    FROM schedules
-                    ORDER BY id DESC;
+                    FROM schedules ORDER BY id DESC;
                 """)
                 rows = cur.fetchall()
-
-        result = [
+        return [
             {
                 "id": r[0],
                 "supplier_name": r[1],
@@ -974,13 +522,12 @@ def list_schedules():
                 "dock_id": r[7],
                 "schedule_time": r[8],
                 "access_code": r[9],
-                "status": r[10] if r[10] else "Pendente",
+                "status": r[10] or "Pendente",
                 "phone": r[11] or "",
                 "email": r[12] or "",
                 "preferred_contact": r[13] or "whatsapp",
             }
             for r in rows
         ]
-        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
