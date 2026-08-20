@@ -92,7 +92,7 @@ def get_form():
 <body>
     <div class="container">
         <div class="logo-container">
-            <img src="{LOGO_BASE64}" alt="Diniz Foods">
+            <h2 style="color: #0b192c; text-align: center;">Diniz foods</h2>
         </div>
         <h2>Agendamento de Carga</h2>
         <form action="/submit" method="post">
