@@ -182,7 +182,6 @@ def get_form():
                 border-bottom: 4px solid #ffc107;
                 color: white;
             }
-            .logo-icon { font-size: 42px; margin-bottom: 5px; display: block; }
             .brand-title { font-size: 22px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
             .brand-title span { color: #ffc107; }
             .slogan { font-size: 13px; color: #ffc107; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px; }
@@ -301,7 +300,6 @@ def get_form():
     <body>
         <div class="card">
             <div class="header-banner">
-                <span class="logo-icon"></span>
                 <div class="brand-title">DINIZ <span>FOODS</span></div>
                 <div class="slogan">COM A DINIZ VOCÊ FAZ MAIS!</div>
             </div>
@@ -430,7 +428,7 @@ def get_form():
                 const randomCode = generateRandomCode();
                 const preferred = document.getElementById('preferredContact').value;
 
-                let cleanPhone = document.getElementById('phone').value.replace(/\D/g, '');
+                let cleanPhone = document.getElementById('phone').value.replace(/\\D/g, '');
                 if (cleanPhone.length >= 10 && !cleanPhone.startsWith('55')) {
                     cleanPhone = '55' + cleanPhone;
                 }
@@ -460,19 +458,22 @@ def get_form():
                     
                     if (res.ok) {
                         msgDiv.className = 'message success';
-                        msgDiv.innerHTML = `Solicitação enviada com sucesso!<br><strong>Status: Pendente de Aprovação</strong><br>Sua pré-senha é:<br><span class="code-highlight">${randomCode}</span>`;
-                        document.getElementById('scheduleForm').reset();
-                        toggleContactInput();
-                        toggleQuantityInput();
+                        msgDiv.innerHTML = `Solicitação enviada com sucesso!<br>Senha gerada: <strong>${randomCode}</strong><br>Redirecionando para o painel...`;
+                        msgDiv.style.display = 'block';
+                        
+                        setTimeout(() => {
+                            window.location.href = '/agendamentos';
+                        }, 2000);
                     } else {
                         msgDiv.className = 'message error';
                         msgDiv.innerText = data.detail || 'Erro ao realizar agendamento.';
+                        msgDiv.style.display = 'block';
                     }
                 } catch (err) {
                     msgDiv.className = 'message error';
                     msgDiv.innerText = 'Erro na conexão com o servidor.';
+                    msgDiv.style.display = 'block';
                 }
-                msgDiv.style.display = 'block';
             });
         </script>
     </body>
@@ -480,7 +481,7 @@ def get_form():
     """
 
 
-# --- TELA DE CONSULTA E APROVAÇÃO DE AGENDAMENTOS ---
+# --- TELA DE CONSULTA E APROVAÇÃO DE AGENDAMENTOS (TEXTOS E TABELA MAIORES) ---
 @app.get("/agendamentos", response_class=HTMLResponse)
 def list_schedules_page():
     return """
@@ -516,13 +517,12 @@ def list_schedules_page():
                 margin-bottom: 20px;
             }
             .brand-info { display: flex; align-items: center; gap: 12px; }
-            .brand-info .icon { font-size: 32px; }
-            .brand-info h2 { margin: 0; color: #0b192c; font-size: 22px; }
-            .brand-info p { margin: 0; color: #666; font-size: 12px; font-weight: 600; }
+            .brand-info h2 { margin: 0; color: #0b192c; font-size: 26px; }
+            .brand-info p { margin: 0; color: #666; font-size: 14px; font-weight: 600; }
             
-            .btn-group { display: flex; gap: 10px; }
+            .btn-group { display: flex; gap: 12px; }
             .btn { 
-                padding: 10px 18px; 
+                padding: 12px 20px; 
                 border-radius: 6px; 
                 text-decoration: none; 
                 font-weight: 600; 
@@ -530,21 +530,21 @@ def list_schedules_page():
                 display: inline-flex;
                 align-items: center;
                 gap: 6px;
-                font-size: 13px;
+                font-size: 15px;
                 border: none;
             }
             .btn-pdf { background-color: #0b192c; color: #ffc107; }
             .btn-pdf:hover { background-color: #1e3e62; }
             .btn-new { background-color: #ffc107; color: #0b192c; }
             .btn-new:hover { background-color: #e0a800; }
-            .btn-clear { background-color: #6c757d; color: white; padding: 10px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; }
+            .btn-clear { background-color: #6c757d; color: white; padding: 11px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; }
             .btn-clear:hover { background-color: #5a6268; }
 
             .filter-bar {
                 background-color: #f8f9fa;
                 border: 1px solid #e9ecef;
                 border-radius: 8px;
-                padding: 15px 20px;
+                padding: 18px 20px;
                 margin-bottom: 20px;
                 display: flex;
                 gap: 15px;
@@ -554,31 +554,31 @@ def list_schedules_page():
             .filter-group {
                 display: flex;
                 flex-direction: column;
-                gap: 5px;
+                gap: 6px;
                 flex: 1;
-                min-width: 160px;
+                min-width: 180px;
             }
             .filter-group label {
-                font-size: 12px;
+                font-size: 14px;
                 font-weight: 700;
                 color: #0b192c;
             }
             .filter-group input, .filter-group select {
-                padding: 9px 12px;
+                padding: 11px 14px;
                 border: 1px solid #ced4da;
                 border-radius: 6px;
-                font-size: 13px;
+                font-size: 15px;
                 font-family: inherit;
             }
             .filter-group input:focus, .filter-group select:focus { outline: none; border-color: #0b192c; }
 
-            .action-btns { display: flex; gap: 6px; justify-content: center; align-items: center; }
+            .action-btns { display: flex; gap: 8px; justify-content: center; align-items: center; }
             .btn-action {
                 color: white; 
-                padding: 6px 10px; 
-                border-radius: 4px; 
+                padding: 8px 12px; 
+                border-radius: 6px; 
                 text-decoration: none; 
-                font-size: 11px; 
+                font-size: 13px; 
                 font-weight: bold; 
                 border: none;
                 cursor: pointer;
@@ -596,18 +596,18 @@ def list_schedules_page():
                 background-color: #6c757d; 
                 color: white; 
                 border: none; 
-                padding: 6px 8px; 
-                border-radius: 4px; 
+                padding: 8px 10px; 
+                border-radius: 6px; 
                 cursor: pointer; 
                 font-weight: 600; 
-                font-size: 11px; 
+                font-size: 13px; 
             }
             .btn-delete:hover { background-color: #5a6268; }
 
             .status-badge {
-                padding: 4px 10px;
+                padding: 6px 12px;
                 border-radius: 12px;
-                font-size: 11px;
+                font-size: 13px;
                 font-weight: 700;
                 display: inline-block;
             }
@@ -615,22 +615,24 @@ def list_schedules_page():
             .status-aprovado { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
             .status-recusado { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
+            /* Aumento geral do texto e padding da tabela */
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { padding: 10px 8px; border: 1px solid #e9ecef; text-align: center; font-size: 12px; }
-            th { background-color: #0b192c; color: #ffffff; font-weight: 600; }
+            th, td { padding: 14px 12px; border: 1px solid #e9ecef; text-align: center; font-size: 14px; }
+            th { background-color: #0b192c; color: #ffffff; font-weight: 600; font-size: 15px; }
             tr:nth-child(even) { background-color: #f8f9fa; }
             tr:hover { background-color: #f1f3f5; }
             
             .code-badge { 
                 font-weight: 700; 
                 background: #eef2f5; 
-                padding: 4px 6px; 
-                border-radius: 4px; 
+                padding: 6px 10px; 
+                border-radius: 6px; 
                 letter-spacing: 1px; 
                 color: #0b192c; 
                 border: 1px solid #ced4da; 
+                font-size: 15px;
             }
-            .no-data { text-align: center; padding: 30px; color: #777; }
+            .no-data { text-align: center; padding: 40px; color: #777; font-size: 15px; }
 
             @media print {
                 body { background-color: #fff; padding: 0; }
@@ -638,8 +640,8 @@ def list_schedules_page():
                 .no-print, .action-column, .filter-bar { display: none !important; }
                 .header-bar { border-bottom: 2px solid #000; padding-bottom: 10px; }
                 th { background-color: #eee !important; color: #000 !important; }
-                table { font-size: 11px; }
-                th, td { padding: 6px; }
+                table { font-size: 12px; }
+                th, td { padding: 8px; }
             }
         </style>
     </head>
@@ -647,7 +649,6 @@ def list_schedules_page():
         <div class="container">
             <div class="header-bar no-print">
                 <div class="brand-info">
-                    <span class="icon"></span>
                     <div>
                         <h2>DINIZ FOODS - Gestão de Agendamentos</h2>
                         <p>COM A DINIZ VOCÊ FAZ MAIS!</p>
@@ -751,10 +752,10 @@ def list_schedules_page():
                     } else if (contactPref === 'email' || emailAddr) {
                         contactDisplay = `✉️ ${emailAddr}`;
                         const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
-                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\n\nAtenciosamente,\nDiniz Alimentos`);
+                        const emailBodyApprove = encodeURIComponent(`Olá,\\n\\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\\n\\nPré-Senha: ${row.access_code}\\n\\nAtenciosamente,\\nDiniz Alimentos`);
 
                         const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
-                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Alimentos`);
+                        const emailBodyReject = encodeURIComponent(`Olá,\\n\\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\\n\\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\\n\\nAtenciosamente,\\nDiniz Alimentos`);
 
                         btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ E-mail (Aprovar)</a>`;
                         btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">✉️ E-mail (Recusar)</a>`;
@@ -765,7 +766,7 @@ def list_schedules_page():
                         <td><span class="code-badge">${row.access_code || '-'}</span></td>
                         <td><span class="status-badge ${statusClass}">${row.status || 'Pendente'}</span></td>
                         <td><strong>${row.supplier_name}</strong></td>
-                        <td style="font-size:11px;">${contactDisplay}</td>
+                        <td>${contactDisplay}</td>
                         <td>${row.truck_plate}</td>
                         <td>${row.cargo_weight}</td>
                         <td>${row.storage_type}</td>
