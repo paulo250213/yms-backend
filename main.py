@@ -698,17 +698,19 @@ def list_schedules_page():
                 <table>
                     <thead>
                         <tr>
-                            <th>Ações / Status</th>
+                            <th>ID</th>
+                            <th>Senha</th>
+                            <th>Status</th>
                             <th>Fornecedor</th>
                             <th>Contato</th>
                             <th>Placa</th>
                             <th>Guichê</th>
                             <th>Data</th>
-                            <th>Senha</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
-                        <tr><td colspan="7" class="no-data">Carregando agendamentos...</td></tr>
+                        <tr><td colspan="9" class="no-data">Carregando agendamentos...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -724,7 +726,7 @@ def list_schedules_page():
                     renderTable(allSchedules);
                 } catch (err) {
                     console.error(err);
-                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
+                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
                 }
             }
 
@@ -733,7 +735,7 @@ def list_schedules_page():
                 tbody.innerHTML = '';
 
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
                     return;
                 }
 
@@ -772,20 +774,21 @@ def list_schedules_page():
                     }
 
                     tr.innerHTML = `
+                        <td>${row.id}</td>
+                        <td><span class="code-badge">${row.access_code || '-'}</span></td>
+                        <td><span class="status-badge ${statusClass}">${row.status || 'Pendente'}</span></td>
+                        <td><strong>${row.supplier_name}</strong></td>
+                        <td>${contactDisplay}</td>
+                        <td>${row.truck_plate}</td>
+                        <td>Guichê ${row.dock_id}</td>
+                        <td>${row.schedule_time}</td>
                         <td>
-                            <div style="margin-bottom: 6px;"><span class="status-badge ${statusClass}">${row.status || 'Pendente'}</span></div>
                             <div class="action-btns">
                                 ${btnApprove}
                                 ${btnReject}
                                 <button class="btn-delete" title="Excluir" onclick="deleteSchedule(${row.id})">🗑️</button>
                             </div>
                         </td>
-                        <td><strong>${row.supplier_name}</strong></td>
-                        <td>${contactDisplay}</td>
-                        <td>${row.truck_plate}</td>
-                        <td>Guichê ${row.dock_id}</td>
-                        <td>${row.schedule_time}</td>
-                        <td><span class="code-badge">${row.access_code || '-'}</span></td>
                     `;
                     tbody.appendChild(tr);
                 });
