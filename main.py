@@ -33,7 +33,7 @@ def send_email_notification(schedule_data: dict):
         <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
             <div style="max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
                 <h2 style="color: #0b192c; border-bottom: 3px solid #ffc107; padding-bottom: 10px; margin-top: 0;">
-                    DINIZ FOODS - Novo Agendamento
+                     DINIZ FOODS - Novo Agendamento
                 </h2>
                 <p>Uma nova solicitação de agendamento foi registrada e está <strong>aguardando sua aprovação</strong>.</p>
                 
@@ -45,7 +45,6 @@ def send_email_notification(schedule_data: dict):
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Peso da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['cargo_weight']} kg</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo de Armazenamento:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['storage_type']}</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['cargo_type']} ({schedule_data['pallet_quantity']} Qtd.)</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Guichê / Doca:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">Guichê {schedule_data['dock_id']}</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Data Prevista:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['schedule_date']}</td></tr>
                     <tr><td style="padding: 8px;"><strong>Pré-Senha:</strong></td><td style="padding: 8px;"><strong style="color: #137333;">{schedule_data['access_code']}</strong></td></tr>
                 </table>
@@ -133,6 +132,7 @@ class StatusUpdateRequest(BaseModel):
     status: str
 
 
+# --- ROTA PARA DISPONIBILIZAR O DOWNLOAD DO MANUAL EM PDF ---
 @app.get("/manual.pdf")
 def get_manual():
     pdf_path = "manual.pdf"
@@ -144,6 +144,7 @@ def get_manual():
         raise HTTPException(status_code=404, detail="Manual em PDF não encontrado no servidor.")
 
 
+# --- TELA DE FORMULÁRIO (HOME) ---
 @app.get("/", response_class=HTMLResponse)
 def get_form():
     return """
@@ -152,7 +153,7 @@ def get_form():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Diniz Foods - Agendamento de Carga</title>
+        <title>Diniz Alimentos - Agendamento de Carga</title>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             * { box-sizing: border-box; }
@@ -181,9 +182,10 @@ def get_form():
                 border-bottom: 4px solid #ffc107;
                 color: white;
             }
-            .brand-title { font-size: 24px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
+            .logo-icon { font-size: 42px; margin-bottom: 5px; display: block; }
+            .brand-title { font-size: 22px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
             .brand-title span { color: #ffc107; }
-            .slogan { font-size: 13px; color: #ffc107; font-weight: 600; margin-top: 6px; letter-spacing: 0.5px; }
+            .slogan { font-size: 13px; color: #ffc107; font-weight: 600; margin-top: 4px; letter-spacing: 0.5px; }
             
             .info-box {
                 background-color: #fff9e6;
@@ -299,7 +301,8 @@ def get_form():
     <body>
         <div class="card">
             <div class="header-banner">
-                <div class="brand-title">DINIZ <span>FOODS</span></div>
+                <span class="logo-icon">👨‍🍳</span>
+                <div class="brand-title">DINIZ <span>ALIMENTOS</span></div>
                 <div class="slogan">COM A DINIZ VOCÊ FAZ MAIS!</div>
             </div>
 
@@ -364,17 +367,6 @@ def get_form():
                     <div class="form-group" id="qtyGroup">
                         <label for="qtyLabel" id="qtyLabel">QUANTIDADE DE PALETES:</label>
                         <input type="number" id="qtyInput" value="0" min="0" placeholder="Ex: 26" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="dock">GUICHÊ DE RECEBIMENTO:</label>
-                        <select id="dock" required>
-                            <option value="10" selected>Guichê 10</option>
-                            <option value="1">Guichê 1</option>
-                            <option value="2">Guichê 2</option>
-                            <option value="3">Guichê 3</option>
-                            <option value="4">Guichê 4</option>
-                            <option value="5">Guichê 5</option>
-                        </select>
                     </div>
                     <div class="form-group">
                         <label for="scheduleDate">DATA DA CHEGADA:</label>
@@ -453,7 +445,7 @@ def get_form():
                     storage_type: document.getElementById('storage').value,
                     cargo_type: document.getElementById('cargoType').value,
                     pallet_quantity: parseInt(document.getElementById('qtyInput').value || 0),
-                    dock_id: parseInt(document.getElementById('dock').value),
+                    dock_id: 10,
                     schedule_date: document.getElementById('scheduleDate').value,
                     access_code: randomCode
                 };
@@ -488,6 +480,7 @@ def get_form():
     """
 
 
+# --- TELA DE CONSULTA E APROVAÇÃO DE AGENDAMENTOS ---
 @app.get("/agendamentos", response_class=HTMLResponse)
 def list_schedules_page():
     return """
@@ -496,7 +489,7 @@ def list_schedules_page():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Diniz Foods - Gestão de Agendamentos</title>
+        <title>Diniz Alimentos - Gestão de Agendamentos</title>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             * { box-sizing: border-box; }
@@ -504,14 +497,14 @@ def list_schedules_page():
                 font-family: 'Poppins', sans-serif; 
                 background-color: #f4f6f9; 
                 margin: 0; 
-                padding: 15px; 
+                padding: 20px; 
             }
             .container { 
                 background: white; 
-                padding: 20px; 
+                padding: 30px; 
                 border-radius: 12px; 
                 box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
-                max-width: 100%; 
+                max-width: 1400px; 
                 margin: 0 auto; 
             }
             .header-bar {
@@ -519,18 +512,17 @@ def list_schedules_page():
                 align-items: center;
                 justify-content: space-between;
                 border-bottom: 3px solid #ffc107;
-                padding-bottom: 12px;
-                margin-bottom: 15px;
-                flex-wrap: wrap;
-                gap: 15px;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
             }
             .brand-info { display: flex; align-items: center; gap: 12px; }
-            .brand-info h2 { margin: 0; color: #0b192c; font-size: 18px; }
-            .brand-info p { margin: 0; color: #666; font-size: 11px; font-weight: 600; }
+            .brand-info .icon { font-size: 32px; }
+            .brand-info h2 { margin: 0; color: #0b192c; font-size: 22px; }
+            .brand-info p { margin: 0; color: #666; font-size: 12px; font-weight: 600; }
             
             .btn-group { display: flex; gap: 10px; }
             .btn { 
-                padding: 8px 14px; 
+                padding: 10px 18px; 
                 border-radius: 6px; 
                 text-decoration: none; 
                 font-weight: 600; 
@@ -538,74 +530,62 @@ def list_schedules_page():
                 display: inline-flex;
                 align-items: center;
                 gap: 6px;
-                font-size: 12px;
+                font-size: 13px;
                 border: none;
             }
             .btn-pdf { background-color: #0b192c; color: #ffc107; }
             .btn-pdf:hover { background-color: #1e3e62; }
             .btn-new { background-color: #ffc107; color: #0b192c; }
             .btn-new:hover { background-color: #e0a800; }
-            .btn-clear { background-color: #6c757d; color: white; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 12px; }
+            .btn-clear { background-color: #6c757d; color: white; padding: 10px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; }
             .btn-clear:hover { background-color: #5a6268; }
 
             .filter-bar {
                 background-color: #f8f9fa;
                 border: 1px solid #e9ecef;
                 border-radius: 8px;
-                padding: 12px 15px;
-                margin-bottom: 15px;
+                padding: 15px 20px;
+                margin-bottom: 20px;
                 display: flex;
-                gap: 12px;
+                gap: 15px;
                 align-items: flex-end;
                 flex-wrap: wrap;
             }
             .filter-group {
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
+                gap: 5px;
                 flex: 1;
-                min-width: 140px;
+                min-width: 160px;
             }
             .filter-group label {
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: 700;
                 color: #0b192c;
             }
             .filter-group input, .filter-group select {
-                padding: 7px 10px;
+                padding: 9px 12px;
                 border: 1px solid #ced4da;
                 border-radius: 6px;
-                font-size: 12px;
+                font-size: 13px;
                 font-family: inherit;
             }
             .filter-group input:focus, .filter-group select:focus { outline: none; border-color: #0b192c; }
 
-            .table-responsive {
-                width: 100%;
-                overflow-x: auto;
-                border: 1px solid #e9ecef;
-                border-radius: 8px;
-            }
-
-            table { width: 100%; border-collapse: collapse; }
-            th, td { padding: 12px 10px; border-bottom: 1px solid #e9ecef; text-align: left; font-size: 12px; }
-            th { background-color: #0b192c; color: #ffffff; font-weight: 600; white-space: nowrap; }
-            tr:nth-child(even) { background-color: #fcfcfc; }
-            tr:hover { background-color: #f1f3f5; }
-
-            .action-btns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+            .action-btns { display: flex; gap: 6px; justify-content: center; align-items: center; }
             .btn-action {
                 color: white; 
-                padding: 6px 12px; 
+                padding: 6px 10px; 
                 border-radius: 4px; 
                 text-decoration: none; 
-                font-size: 12px; 
+                font-size: 11px; 
                 font-weight: bold; 
                 border: none;
                 cursor: pointer;
                 display: inline-flex;
                 align-items: center;
                 gap: 4px;
+                white-space: nowrap;
             }
             .btn-app { background-color: #28a745; }
             .btn-app:hover { background-color: #218838; }
@@ -616,11 +596,11 @@ def list_schedules_page():
                 background-color: #6c757d; 
                 color: white; 
                 border: none; 
-                padding: 6px 10px; 
+                padding: 6px 8px; 
                 border-radius: 4px; 
                 cursor: pointer; 
                 font-weight: 600; 
-                font-size: 12px; 
+                font-size: 11px; 
             }
             .btn-delete:hover { background-color: #5a6268; }
 
@@ -635,10 +615,16 @@ def list_schedules_page():
             .status-aprovado { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
             .status-recusado { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { padding: 10px 8px; border: 1px solid #e9ecef; text-align: center; font-size: 12px; }
+            th { background-color: #0b192c; color: #ffffff; font-weight: 600; }
+            tr:nth-child(even) { background-color: #f8f9fa; }
+            tr:hover { background-color: #f1f3f5; }
+            
             .code-badge { 
                 font-weight: 700; 
                 background: #eef2f5; 
-                padding: 4px 8px; 
+                padding: 4px 6px; 
                 border-radius: 4px; 
                 letter-spacing: 1px; 
                 color: #0b192c; 
@@ -650,11 +636,10 @@ def list_schedules_page():
                 body { background-color: #fff; padding: 0; }
                 .container { box-shadow: none; max-width: 100%; padding: 0; }
                 .no-print, .action-column, .filter-bar { display: none !important; }
-                .table-responsive { overflow: visible; border: none; }
                 .header-bar { border-bottom: 2px solid #000; padding-bottom: 10px; }
                 th { background-color: #eee !important; color: #000 !important; }
-                table { font-size: 10px; }
-                th, td { padding: 5px; border: 1px solid #ccc; }
+                table { font-size: 11px; }
+                th, td { padding: 6px; }
             }
         </style>
     </head>
@@ -662,17 +647,19 @@ def list_schedules_page():
         <div class="container">
             <div class="header-bar no-print">
                 <div class="brand-info">
+                    <span class="icon">👨‍🍳</span>
                     <div>
-                        <h2>DINIZ FOODS - Gestão de Agendamentos</h2>
+                        <h2>DINIZ ALIMENTOS - Gestão de Agendamentos</h2>
                         <p>COM A DINIZ VOCÊ FAZ MAIS!</p>
                     </div>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-pdf" onclick="window.print()">📄 Exportar PDF</button>
+                    <button class="btn btn-pdf" onclick="window.print()">📄 Exportar PDF / Imprimir</button>
                     <a href="/" class="btn btn-new">➕ Novo Agendamento</a>
                 </div>
             </div>
 
+            <!-- FILTROS -->
             <div class="filter-bar no-print">
                 <div class="filter-group">
                     <label for="filterStatus">📌 Status:</label>
@@ -691,29 +678,30 @@ def list_schedules_page():
                     <label for="filterSearch">🔍 Buscar (Fornecedor, Placa, Senha):</label>
                     <input type="text" id="filterSearch" placeholder="Digite para buscar..." oninput="applyFilters()">
                 </div>
-                <button class="btn-clear" onclick="clearFilters()">🔄 Limpar</button>
+                <button class="btn-clear" onclick="clearFilters()">🔄 Limpar Filtros</button>
             </div>
 
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Senha</th>
-                            <th>Status</th>
-                            <th>Fornecedor</th>
-                            <th>Contato</th>
-                            <th>Placa</th>
-                            <th>Guichê</th>
-                            <th>Data</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <tr><td colspan="9" class="no-data">Carregando agendamentos...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Senha</th>
+                        <th>Status</th>
+                        <th>Fornecedor</th>
+                        <th>Contato Escolhido</th>
+                        <th>Placa</th>
+                        <th>Peso (kg)</th>
+                        <th>Armaz.</th>
+                        <th>Tipo Carga</th>
+                        <th>Paletes/Vol.</th>
+                        <th>Data Chegada</th>
+                        <th class="action-column">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="12" class="no-data">Carregando agendamentos...</td></tr>
+                </tbody>
+            </table>
         </div>
 
         <script>
@@ -726,7 +714,7 @@ def list_schedules_page():
                     renderTable(allSchedules);
                 } catch (err) {
                     console.error(err);
-                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="9" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
+                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-data" style="color:red;">Erro ao carregar dados.</td></tr>';
                 }
             }
 
@@ -735,12 +723,14 @@ def list_schedules_page():
                 tbody.innerHTML = '';
 
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="12" class="no-data">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>';
                     return;
                 }
 
                 data.forEach(row => {
                     const tr = document.createElement('tr');
+                    const qtyText = row.cargo_type === 'Batida' ? `${row.pallet_quantity} vol.` : `${row.pallet_quantity} pal.`;
+                    
                     const statusClass = row.status === 'Aprovado' ? 'status-aprovado' : (row.status === 'Recusado' ? 'status-recusado' : 'status-pendente');
 
                     const contactPref = row.preferred_contact || 'whatsapp';
@@ -753,24 +743,21 @@ def list_schedules_page():
 
                     if (contactPref === 'whatsapp' || phoneNum) {
                         contactDisplay = `📱 ${phoneNum}`;
-                        const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} (Guichê ${row.dock_id}) na Diniz Foods foi APROVADO. Sua pré-senha é: ${row.access_code}.`);
+                        const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}.`);
                         const textReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado. Por favor, acesse nosso site e faça uma nova solicitação.`);
                         
-                        btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">Aprovar</a>`;
-                        btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">Recusar</a>`;
+                        btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>`;
+                        btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>`;
                     } else if (contactPref === 'email' || emailAddr) {
                         contactDisplay = `✉️ ${emailAddr}`;
-                        const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Foods`);
-                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} (Guichê ${row.dock_id}) foi APROVADO.\n\nPré-Senha: ${row.access_code}\n\nAtenciosamente,\nDiniz Foods`);
+                        const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
+                        const emailBodyApprove = encodeURIComponent(`Olá,\n\nSeu agendamento para o dia ${row.schedule_time} foi APROVADO.\n\nPré-Senha: ${row.access_code}\n\nAtenciosamente,\nDiniz Alimentos`);
 
-                        const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Foods`);
-                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Foods`);
+                        const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
+                        const emailBodyReject = encodeURIComponent(`Olá,\n\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\n\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\n\nAtenciosamente,\nDiniz Alimentos`);
 
-                        btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">Aprovar</a>`;
-                        btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">Recusar</a>`;
-                    } else {
-                        btnApprove = `<button class="btn-action btn-app" onclick="updateStatus(${row.id}, 'Aprovado')">Aprovar</button>`;
-                        btnReject = `<button class="btn-action btn-rej" onclick="updateStatus(${row.id}, 'Recusado')">Recusar</button>`;
+                        btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ E-mail (Aprovar)</a>`;
+                        btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">✉️ E-mail (Recusar)</a>`;
                     }
 
                     tr.innerHTML = `
@@ -778,11 +765,14 @@ def list_schedules_page():
                         <td><span class="code-badge">${row.access_code || '-'}</span></td>
                         <td><span class="status-badge ${statusClass}">${row.status || 'Pendente'}</span></td>
                         <td><strong>${row.supplier_name}</strong></td>
-                        <td>${contactDisplay}</td>
+                        <td style="font-size:11px;">${contactDisplay}</td>
                         <td>${row.truck_plate}</td>
-                        <td>Guichê ${row.dock_id}</td>
+                        <td>${row.cargo_weight}</td>
+                        <td>${row.storage_type}</td>
+                        <td>${row.cargo_type || '-'}</td>
+                        <td>${qtyText}</td>
                         <td>${row.schedule_time}</td>
-                        <td>
+                        <td class="action-column">
                             <div class="action-btns">
                                 ${btnApprove}
                                 ${btnReject}
@@ -855,6 +845,7 @@ def list_schedules_page():
     """
 
 
+# --- API PARA SALVAR AGENDAMENTO ---
 @app.post("/api/schedule")
 def create_schedule(req: ScheduleRequest):
     try:
@@ -897,6 +888,7 @@ def create_schedule(req: ScheduleRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# --- API PARA ALTERAR STATUS ---
 @app.patch("/api/schedule/{schedule_id}/status")
 def update_schedule_status(schedule_id: int, req: StatusUpdateRequest):
     try:
@@ -914,6 +906,7 @@ def update_schedule_status(schedule_id: int, req: StatusUpdateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# --- API PARA EXCLUIR AGENDAMENTO ---
 @app.delete("/api/schedule/{schedule_id}")
 def delete_schedule(schedule_id: int):
     try:
@@ -928,6 +921,7 @@ def delete_schedule(schedule_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# --- API PARA LISTAR OS AGENDAMENTOS EM JSON ---
 @app.get("/api/schedules")
 def list_schedules():
     try:
