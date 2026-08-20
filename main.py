@@ -301,8 +301,8 @@ def get_form():
     <body>
         <div class="card">
             <div class="header-banner">
-                <span class="logo-icon">👨‍🍳</span>
-                <div class="brand-title">DINIZ <span>ALIMENTOS</span></div>
+                <span class="logo-icon"></span>
+                <div class="brand-title">DINIZ <span>FOODS</span></div>
                 <div class="slogan">COM A DINIZ VOCÊ FAZ MAIS!</div>
             </div>
 
