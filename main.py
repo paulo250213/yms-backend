@@ -2,12 +2,8 @@ import os
 import base64
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
-
-# Mapeia a pasta atual para servir arquivos estáticos (como logo.png)
-app.mount("/static", StaticFiles(directory="."), name="static")
 
 @app.get("/", response_class=HTMLResponse)
 def get_form():
@@ -96,7 +92,7 @@ def get_form():
 <body>
     <div class="container">
         <div class="logo-container">
-            <img src="/static/logo.png" alt="Diniz Alimentos Logo">
+            <img src="logo.png" alt="Diniz Alimentos Logo">
         </div>
         <h2>Agendamento de Carga</h2>
         <form action="/submit" method="post">
