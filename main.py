@@ -1,10 +1,10 @@
 import os
 import smtplib
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import psycopg2
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 app = FastAPI(title="DINIZ - YMS Agendamento de Entregas")
@@ -20,14 +20,28 @@ NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL")
 APP_URL = os.getenv("APP_URL", "https://seu-app.onrender.com")
 
 
+def get_db_connection():
+    if not DATABASE_URL:
+        raise HTTPException(
+            status_code=500, detail="DATABASE_URL não configurada."
+        )
+    return psycopg2.connect(DATABASE_URL)
+
+
 def send_email_notification(schedule_data: dict):
     if not SMTP_EMAIL or not SMTP_PASSWORD or not NOTIFY_EMAIL:
-        print("AVISO: Configurações de e-mail não encontradas nas variáveis de ambiente.")
+        print(
+            "AVISO: Configurações de e-mail não encontradas nas variáveis de"
+            " ambiente."
+        )
         return
 
     try:
-        subject = f"📬 Novo Agendamento Pendente - {schedule_data['supplier_name']}"
-        
+        subject = (
+            "📬 Novo Agendamento Pendente -"
+            f" {schedule_data.get('supplier_name')}"
+        )
+
         body_html = f"""
         <html>
         <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -38,15 +52,15 @@ def send_email_notification(schedule_data: dict):
                 <p>Uma nova solicitação de agendamento foi registrada e está <strong>aguardando sua aprovação</strong>.</p>
                 
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #f9f9f9;">
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Fornecedor:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['supplier_name']}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Contato Preferencial:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('preferred_contact', 'whatsapp').upper()}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Fornecedor:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('supplier_name')}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Contato Preferencial:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{str(schedule_data.get('preferred_contact', 'whatsapp')).upper()}</td></tr>
                     <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Dado de Contato:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('phone') if schedule_data.get('preferred_contact') == 'whatsapp' else schedule_data.get('email')}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Placa do Veículo:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['truck_plate']}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Peso da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['cargo_weight']} kg</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo de Armazenamento:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['storage_type']}</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['cargo_type']} ({schedule_data['pallet_quantity']} Qtd.)</td></tr>
-                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Data Prevista:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data['schedule_date']}</td></tr>
-                    <tr><td style="padding: 8px;"><strong>Pré-Senha:</strong></td><td style="padding: 8px;"><strong style="color: #137333;">{schedule_data['access_code']}</strong></td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Placa do Veículo:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('truck_plate')}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Peso da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('cargo_weight')} kg</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo de Armazenamento:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('storage_type')}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tipo da Carga:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('cargo_type')} ({schedule_data.get('pallet_quantity')} Qtd.)</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Data Prevista:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">{schedule_data.get('schedule_date')}</td></tr>
+                    <tr><td style="padding: 8px;"><strong>Pré-Senha:</strong></td><td style="padding: 8px;"><strong style="color: #137333;">{schedule_data.get('access_code')}</strong></td></tr>
                 </table>
 
                 <div style="text-align: center; margin-top: 25px;">
@@ -79,33 +93,28 @@ def init_db():
     if not DATABASE_URL:
         return
     try:
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS schedules (
-                id SERIAL PRIMARY KEY,
-                supplier_name VARCHAR(100) NOT NULL,
-                truck_plate VARCHAR(20) NOT NULL,
-                cargo_weight NUMERIC(10, 2) NOT NULL,
-                storage_type VARCHAR(20) NOT NULL,
-                dock_id INT NOT NULL DEFAULT 10,
-                schedule_time DATE NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-            
-            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS cargo_type VARCHAR(20);
-            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS pallet_quantity INT DEFAULT 0;
-            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS access_code VARCHAR(20);
-            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Pendente';
-            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
-            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS email VARCHAR(100);
-            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS preferred_contact VARCHAR(20) DEFAULT 'whatsapp';
-            """
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
+        with psycopg2.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS schedules (
+                        id SERIAL PRIMARY KEY,
+                        supplier_name VARCHAR(100) NOT NULL,
+                        truck_plate VARCHAR(20) NOT NULL,
+                        cargo_weight NUMERIC(10, 2) NOT NULL,
+                        storage_type VARCHAR(20) NOT NULL,
+                        dock_id INT NOT NULL DEFAULT 10,
+                        schedule_time DATE NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        cargo_type VARCHAR(20),
+                        pallet_quantity INT DEFAULT 0,
+                        access_code VARCHAR(20),
+                        status VARCHAR(20) DEFAULT 'Pendente',
+                        phone VARCHAR(30),
+                        email VARCHAR(100),
+                        preferred_contact VARCHAR(20) DEFAULT 'whatsapp'
+                    );
+                """)
+                conn.commit()
     except Exception as e:
         print("Erro ao inicializar o banco:", e)
 
@@ -136,12 +145,24 @@ class StatusUpdateRequest(BaseModel):
 @app.get("/manual.pdf")
 def get_manual():
     pdf_path = "manual.pdf"
+    alt_pdf_path = "Manual do Fornecedor Diniz Foods - Versão Corrigida.pdf"
+
     if os.path.exists(pdf_path):
-        return FileResponse(pdf_path, media_type="application/pdf", filename="Manual_do_Fornecedor_Diniz.pdf")
-    elif os.path.exists("Manual do Fornecedor Diniz Foods - Versão Corrigida.pdf"):
-        return FileResponse("Manual do Fornecedor Diniz Foods - Versão Corrigida.pdf", media_type="application/pdf", filename="Manual_do_Fornecedor_Diniz.pdf")
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename="Manual_do_Fornecedor_Diniz.pdf",
+        )
+    elif os.path.exists(alt_pdf_path):
+        return FileResponse(
+            alt_pdf_path,
+            media_type="application/pdf",
+            filename="Manual_do_Fornecedor_Diniz.pdf",
+        )
     else:
-        raise HTTPException(status_code=404, detail="Manual em PDF não encontrado no servidor.")
+        raise HTTPException(
+            status_code=404, detail="Manual em PDF não encontrado no servidor."
+        )
 
 
 # --- TELA DE FORMULÁRIO (HOME) ---
@@ -365,7 +386,7 @@ def get_form():
                         </select>
                     </div>
                     <div class="form-group" id="qtyGroup">
-                        <label for="qtyLabel" id="qtyLabel">QUANTIDADE DE PALETES:</label>
+                        <label for="qtyInput" id="qtyLabel">QUANTIDADE DE PALETES:</label>
                         <input type="number" id="qtyInput" value="0" min="0" placeholder="Ex: 26" required>
                     </div>
                     <div class="form-group">
@@ -847,43 +868,41 @@ def list_schedules_page():
 
 # --- API PARA SALVAR AGENDAMENTO ---
 @app.post("/api/schedule")
-def create_schedule(req: ScheduleRequest):
+def create_schedule(req: ScheduleRequest, background_tasks: BackgroundTasks):
     try:
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO schedules (
+                        supplier_name, preferred_contact, phone, email, truck_plate, cargo_weight, storage_type, 
+                        cargo_type, pallet_quantity, dock_id, schedule_time, access_code, status
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendente');
+                    """,
+                    (
+                        req.supplier_name.upper(),
+                        req.preferred_contact,
+                        req.phone,
+                        req.email,
+                        req.truck_plate.upper(),
+                        req.cargo_weight,
+                        req.storage_type,
+                        req.cargo_type,
+                        req.pallet_quantity,
+                        req.dock_id,
+                        req.schedule_date,
+                        req.access_code,
+                    ),
+                )
+                conn.commit()
 
-        cur.execute(
-            """
-            INSERT INTO schedules (
-                supplier_name, preferred_contact, phone, email, truck_plate, cargo_weight, storage_type, 
-                cargo_type, pallet_quantity, dock_id, schedule_time, access_code, status
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendente');
-            """,
-            (
-                req.supplier_name.upper(),
-                req.preferred_contact,
-                req.phone,
-                req.email,
-                req.truck_plate.upper(),
-                req.cargo_weight,
-                req.storage_type,
-                req.cargo_type,
-                req.pallet_quantity,
-                req.dock_id,
-                req.schedule_date,
-                req.access_code,
-            ),
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
+        background_tasks.add_task(send_email_notification, req.dict())
 
-        send_email_notification(req.dict())
-
-        return {"status": "sucesso", "mensagem": "Solicitação registrada com sucesso!"}
-    except HTTPException as http_ex:
-        raise http_ex
+        return {
+            "status": "sucesso",
+            "mensagem": "Solicitação registrada com sucesso!",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -892,16 +911,17 @@ def create_schedule(req: ScheduleRequest):
 @app.patch("/api/schedule/{schedule_id}/status")
 def update_schedule_status(schedule_id: int, req: StatusUpdateRequest):
     try:
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE schedules SET status = %s WHERE id = %s;",
-            (req.status, schedule_id)
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-        return {"status": "sucesso", "mensagem": f"Status alterado para {req.status}"}
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE schedules SET status = %s WHERE id = %s;",
+                    (req.status, schedule_id),
+                )
+                conn.commit()
+        return {
+            "status": "sucesso",
+            "mensagem": f"Status alterado para {req.status}",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -910,13 +930,16 @@ def update_schedule_status(schedule_id: int, req: StatusUpdateRequest):
 @app.delete("/api/schedule/{schedule_id}")
 def delete_schedule(schedule_id: int):
     try:
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        cur.execute("DELETE FROM schedules WHERE id = %s;", (schedule_id,))
-        conn.commit()
-        cur.close()
-        conn.close()
-        return {"status": "sucesso", "mensagem": "Agendamento excluído com sucesso!"}
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM schedules WHERE id = %s;", (schedule_id,)
+                )
+                conn.commit()
+        return {
+            "status": "sucesso",
+            "mensagem": "Agendamento excluído com sucesso!",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -925,41 +948,36 @@ def delete_schedule(schedule_id: int):
 @app.get("/api/schedules")
 def list_schedules():
     try:
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT id, supplier_name, truck_plate, cargo_weight, storage_type, 
-                   cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), 
-                   access_code, status, phone, email, preferred_contact
-            FROM schedules
-            ORDER BY supplier_name ASC;
-            """
-        )
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, supplier_name, truck_plate, cargo_weight, storage_type, 
+                           cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), 
+                           access_code, status, phone, email, preferred_contact
+                    FROM schedules
+                    ORDER BY id DESC;
+                """)
+                rows = cur.fetchall()
 
-        result = []
-        for r in rows:
-            result.append(
-                {
-                    "id": r[0],
-                    "supplier_name": r[1],
-                    "truck_plate": r[2],
-                    "cargo_weight": r[3],
-                    "storage_type": r[4],
-                    "cargo_type": r[5],
-                    "pallet_quantity": r[6],
-                    "dock_id": r[7],
-                    "schedule_time": r[8],
-                    "access_code": r[9],
-                    "status": r[10] if r[10] else "Pendente",
-                    "phone": r[11] if len(r) > 11 and r[11] else "",
-                    "email": r[12] if len(r) > 12 and r[12] else "",
-                    "preferred_contact": r[13] if len(r) > 13 and r[13] else "whatsapp",
-                }
-            )
+        result = [
+            {
+                "id": r[0],
+                "supplier_name": r[1],
+                "truck_plate": r[2],
+                "cargo_weight": r[3],
+                "storage_type": r[4],
+                "cargo_type": r[5],
+                "pallet_quantity": r[6],
+                "dock_id": r[7],
+                "schedule_time": r[8],
+                "access_code": r[9],
+                "status": r[10] if r[10] else "Pendente",
+                "phone": r[11] or "",
+                "email": r[12] or "",
+                "preferred_contact": r[13] or "whatsapp",
+            }
+            for r in rows
+        ]
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
