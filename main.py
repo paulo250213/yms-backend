@@ -269,7 +269,7 @@ def get_form():
                 transition: transform 0.1s, box-shadow 0.2s;
             }
             button.btn-submit:hover { 
-                background: linear-gradient(90deg, #e0a800 0%, #c69500 100%); 
+                background: linear-gradient(90deg, #e0a800 100%, #c69500 100%); 
                 transform: translateY(-1px);
             }
             .message { 
@@ -481,7 +481,7 @@ def get_form():
     """
 
 
-# --- TELA DE CONSULTA E APROVAÇÃO DE AGENDAMENTOS (TEXTOS E TABELA MAIORES) ---
+# --- TELA DE CONSULTA E APROVAÇÃO DE AGENDAMENTOS (EXPANSÍVEL DE PONTA A PONTA) ---
 @app.get("/agendamentos", response_class=HTMLResponse)
 def list_schedules_page():
     return """
@@ -498,14 +498,15 @@ def list_schedules_page():
                 font-family: 'Poppins', sans-serif; 
                 background-color: #f4f6f9; 
                 margin: 0; 
-                padding: 20px; 
+                padding: 10px; 
             }
             .container { 
                 background: white; 
-                padding: 30px; 
+                padding: 25px; 
                 border-radius: 12px; 
                 box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
-                max-width: 1400px; 
+                width: 100%; 
+                max-width: 100%; 
                 margin: 0 auto; 
             }
             .header-bar {
@@ -615,7 +616,6 @@ def list_schedules_page():
             .status-aprovado { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
             .status-recusado { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
-            /* Aumento geral do texto e padding da tabela */
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
             th, td { padding: 14px 12px; border: 1px solid #e9ecef; text-align: center; font-size: 14px; }
             th { background-color: #0b192c; color: #ffffff; font-weight: 600; font-size: 15px; }
