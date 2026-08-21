@@ -144,7 +144,7 @@ def get_manual():
         raise HTTPException(status_code=404, detail="Manual em PDF não encontrado no servidor.")
 
 
-# --- TELA DE FORMULÁRIO (HOME) COM LETRAS MAIORES ---
+# --- TELA DE FORMULÁRIO (HOME) COM CAMPOS EM COLUNA ÚNICA E LETRAS MAIORES ---
 @app.get("/", response_class=HTMLResponse)
 def get_form():
     return """
@@ -172,7 +172,7 @@ def get_form():
                 border-radius: 12px; 
                 box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
                 width: 100%; 
-                max-width: 850px; 
+                max-width: 700px; 
                 overflow: hidden;
             }
             .header-banner {
@@ -182,46 +182,46 @@ def get_form():
                 border-bottom: 4px solid #ffc107;
                 color: white;
             }
-            .brand-title { font-size: 30px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
+            .brand-title { font-size: 34px; font-weight: 700; letter-spacing: 1px; margin: 0; color: #ffffff; }
             .brand-title span { color: #ffc107; }
-            .slogan { font-size: 15px; color: #ffc107; font-weight: 600; margin-top: 6px; letter-spacing: 0.5px; }
+            .slogan { font-size: 17px; color: #ffc107; font-weight: 600; margin-top: 6px; letter-spacing: 0.5px; }
             
             .info-box {
                 background-color: #fff9e6;
-                border-left: 5px solid #ffc107;
-                padding: 18px 22px;
+                border-left: 6px solid #ffc107;
+                padding: 20px 25px;
                 margin: 25px 35px 0 35px;
                 border-radius: 6px;
             }
             .info-box-title {
                 font-weight: 700;
                 color: #0b192c;
-                font-size: 16px;
-                margin-bottom: 8px;
+                font-size: 18px;
+                margin-bottom: 10px;
                 display: flex;
                 align-items: center;
                 gap: 6px;
             }
-            .info-box-text { font-size: 14px; color: #444; line-height: 1.5; margin-bottom: 10px; }
+            .info-box-text { font-size: 16px; color: #444; line-height: 1.5; margin-bottom: 12px; }
             .info-box-time {
                 font-weight: 700;
                 color: #b78103;
                 background: #fff0c2;
-                padding: 6px 10px;
+                padding: 8px 12px;
                 border-radius: 4px;
                 display: inline-block;
                 margin-bottom: 10px;
-                font-size: 14px;
+                font-size: 16px;
             }
             .info-box-alert {
                 font-weight: 700;
                 color: #0b192c;
                 background: #ffe89c;
-                padding: 8px 12px;
+                padding: 10px 14px;
                 border-radius: 4px;
                 display: block;
                 margin-bottom: 12px;
-                font-size: 14px;
+                font-size: 16px;
             }
             .btn-manual {
                 display: inline-block;
@@ -229,33 +229,25 @@ def get_form():
                 text-align: center;
                 background-color: #0b192c;
                 color: #ffc107;
-                padding: 12px;
+                padding: 14px;
                 border-radius: 6px;
-                font-size: 15px;
+                font-size: 17px;
                 font-weight: 700;
                 text-decoration: none;
                 transition: background 0.2s;
             }
             .btn-manual:hover { background-color: #1e3e62; }
 
-            .form-body { padding: 25px 35px 35px 35px; }
+            .form-body { padding: 30px 35px 35px 35px; }
             
-            .form-row {
-                display: flex;
-                gap: 20px;
-            }
-            .form-col {
-                flex: 1;
-            }
-
-            .form-group { margin-bottom: 20px; }
-            label { display: block; margin-bottom: 8px; font-weight: 700; color: #0b192c; font-size: 15px; }
+            .form-group { margin-bottom: 22px; }
+            label { display: block; margin-bottom: 8px; font-weight: 700; color: #0b192c; font-size: 17px; }
             input, select { 
                 width: 100%; 
-                padding: 14px 16px; 
-                border: 1.5px solid #dcdfe6; 
-                border-radius: 6px; 
-                font-size: 16px;
+                padding: 16px 18px; 
+                border: 2px solid #dcdfe6; 
+                border-radius: 8px; 
+                font-size: 18px;
                 font-family: inherit;
                 transition: border-color 0.2s;
             }
@@ -264,17 +256,17 @@ def get_form():
             
             button.btn-submit { 
                 width: 100%; 
-                padding: 16px; 
+                padding: 18px; 
                 background: linear-gradient(90deg, #ffc107 0%, #e0a800 100%); 
                 color: #0b192c; 
                 border: none; 
-                border-radius: 6px; 
-                font-size: 18px; 
+                border-radius: 8px; 
+                font-size: 20px; 
                 cursor: pointer; 
                 font-weight: 700; 
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
-                margin-top: 10px;
+                margin-top: 15px;
                 box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
                 transition: transform 0.1s, box-shadow 0.2s;
             }
@@ -284,11 +276,11 @@ def get_form():
             }
             .message { 
                 margin-top: 20px; 
-                padding: 15px; 
-                border-radius: 6px; 
+                padding: 16px; 
+                border-radius: 8px; 
                 display: none; 
                 text-align: center; 
-                font-size: 16px; 
+                font-size: 18px; 
                 line-height: 1.5; 
             }
             .success { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
@@ -319,78 +311,59 @@ def get_form():
                         <input type="text" id="supplier" class="uppercase-input" required placeholder="Ex: SILVA ALIMENTOS LTDA">
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="preferredContact">RECEBER CONFIRMAÇÃO POR:</label>
-                                <select id="preferredContact" onchange="toggleContactInput()" required>
-                                    <option value="whatsapp" selected>📱 WhatsApp</option>
-                                    <option value="email">✉️ E-mail</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group" id="phoneGroup">
-                                <label for="phone">CELULAR / WHATSAPP:</label>
-                                <input type="text" id="phone" required placeholder="Ex: 11999998888 (com DDD)">
-                            </div>
-                            <div class="form-group" id="emailGroup" style="display: none;">
-                                <label for="email">E-MAIL DE CONTATO:</label>
-                                <input type="email" id="email" placeholder="Ex: contato@fornecedor.com">
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label for="preferredContact">RECEBER CONFIRMAÇÃO POR:</label>
+                        <select id="preferredContact" onchange="toggleContactInput()" required>
+                            <option value="whatsapp" selected>📱 WhatsApp</option>
+                            <option value="email">✉️ E-mail</option>
+                        </select>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="plate">PLACA DO VEÍCULO:</label>
-                                <input type="text" id="plate" class="uppercase-input" required placeholder="Ex: ABC1D23">
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="weight">PESO DA CARGA (KG):</label>
-                                <input type="number" step="0.1" id="weight" required placeholder="Ex: 1500.50">
-                            </div>
-                        </div>
+                    <div class="form-group" id="phoneGroup">
+                        <label for="phone">CELULAR / WHATSAPP:</label>
+                        <input type="text" id="phone" required placeholder="Ex: 11999998888 (com DDD)">
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="storage">TIPO DE ARMAZENAMENTO:</label>
-                                <select id="storage" required>
-                                    <option value="Seco">Seco</option>
-                                    <option value="Resfriado">Resfriado</option>
-                                    <option value="Congelado">Congelado</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="cargoType">TIPO DA CARGA:</label>
-                                <select id="cargoType" required onchange="toggleQuantityInput()">
-                                    <option value="Paletizada">Paletizada</option>
-                                    <option value="Batida">Batida (Carga Solta)</option>
-                                </select>
-                            </div>
-                        </div>
+                    <div class="form-group" id="emailGroup" style="display: none;">
+                        <label for="email">E-MAIL DE CONTATO:</label>
+                        <input type="email" id="email" placeholder="Ex: contato@fornecedor.com">
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group" id="qtyGroup">
-                                <label for="qtyLabel" id="qtyLabel">QUANTIDADE DE PALETES:</label>
-                                <input type="number" id="qtyInput" value="0" min="0" placeholder="Ex: 26" required>
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="scheduleDate">DATA DA CHEGADA:</label>
-                                <input type="date" id="scheduleDate" required>
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label for="plate">PLACA DO VEÍCULO:</label>
+                        <input type="text" id="plate" class="uppercase-input" required placeholder="Ex: ABC1D23">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="weight">PESO DA CARGA (KG):</label>
+                        <input type="number" step="0.1" id="weight" required placeholder="Ex: 1500.50">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="storage">TIPO DE ARMAZENAMENTO:</label>
+                        <select id="storage" required>
+                            <option value="Seco">Seco</option>
+                            <option value="Resfriado">Resfriado</option>
+                            <option value="Congelado">Congelado</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cargoType">TIPO DA CARGA:</label>
+                        <select id="cargoType" required onchange="toggleQuantityInput()">
+                            <option value="Paletizada">Paletizada</option>
+                            <option value="Batida">Batida (Carga Solta)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="qtyGroup">
+                        <label for="qtyLabel" id="qtyLabel">QUANTIDADE DE PALETES:</label>
+                        <input type="number" id="qtyInput" value="0" min="0" placeholder="Ex: 26" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scheduleDate">DATA DA CHEGADA:</label>
+                        <input type="date" id="scheduleDate" required>
                     </div>
 
                     <button type="submit" class="btn-submit">Solicitar Agendamento</button>
