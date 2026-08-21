@@ -95,7 +95,7 @@ def init_db():
             );
             
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS cargo_type VARCHAR(20);
-            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS pallet_quantity INT DEFAULT 0;
+            ALTER TABLE schedules ADD COLUMN IF NOT EXISTS pallet_quantity INT DEFAULT 1;
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS access_code VARCHAR(20);
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Pendente';
             ALTER TABLE schedules ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
@@ -144,7 +144,7 @@ def get_manual():
         raise HTTPException(status_code=404, detail="Manual em PDF não encontrado no servidor.")
 
 
-# --- TELA DE FORMULÁRIO (HOME) COM CAMPOS EM COLUNA ÚNICA E LETRAS MAIORES ---
+# --- TELA DE FORMULÁRIO (HOME) ---
 @app.get("/", response_class=HTMLResponse)
 def get_form():
     return """
@@ -358,7 +358,7 @@ def get_form():
 
                     <div class="form-group" id="qtyGroup">
                         <label for="qtyLabel" id="qtyLabel">QUANTIDADE DE PALETES:</label>
-                        <input type="number" id="qtyInput" value="0" min="0" placeholder="Ex: 26" required>
+                        <input type="number" id="qtyInput" min="1" required placeholder="Ex: 26">
                     </div>
 
                     <div class="form-group">
@@ -409,7 +409,7 @@ def get_form():
                 
                 if (cargoType === 'Batida') {
                     qtyLabel.innerText = 'QUANTIDADE DE VOLUMES:';
-                    qtyInput.placeholder = 'Ex: 150 (Caixas/Sacos)';
+                    qtyInput.placeholder = 'Ex: 150';
                 } else {
                     qtyLabel.innerText = 'QUANTIDADE DE PALETES:';
                     qtyInput.placeholder = 'Ex: 26';
@@ -438,7 +438,7 @@ def get_form():
                     cargo_weight: parseFloat(document.getElementById('weight').value),
                     storage_type: document.getElementById('storage').value,
                     cargo_type: document.getElementById('cargoType').value,
-                    pallet_quantity: parseInt(document.getElementById('qtyInput').value || 0),
+                    pallet_quantity: parseInt(document.getElementById('qtyInput').value),
                     dock_id: 10,
                     schedule_date: document.getElementById('scheduleDate').value,
                     access_code: randomCode
@@ -743,8 +743,8 @@ def list_schedules_page():
                         const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}.`);
                         const textReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado. Por favor, acesse nosso site e faça uma nova solicitação.`);
                         
-                        btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>`;
-                        btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>`;
+                        btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" rel="noopener noreferrer" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>`;
+                        btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" rel="noopener noreferrer" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>`;
                     } else if (contactPref === 'email' || emailAddr) {
                         contactDisplay = `✉️ ${emailAddr}`;
                         const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
