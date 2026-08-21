@@ -477,7 +477,7 @@ def get_form():
     """
 
 
-# --- TELA DE CONSULTA E APROVAÇÃO DE AGENDAMENTOS (EXPANSÍVEL DE PONTA A PONTA) ---
+# --- TELA DE CONSULTA E APROVAÇÃO DE AGENDAMENTOS ---
 @app.get("/agendamentos", response_class=HTMLResponse)
 def list_schedules_page():
     return """
@@ -827,10 +827,11 @@ def list_schedules_page():
                         if (res.ok) {
                             loadSchedules();
                         } else {
-                            alert('Erro ao excluir agendamento.');
+                            alert('Não foi possível excluir o agendamento no servidor.');
                         }
                     } catch (err) {
-                        alert('Erro de conexão ao excluir.');
+                        console.error('Erro de conexão:', err);
+                        alert('Erro de conexão ao tentar excluir.');
                     }
                 }
             }
@@ -957,6 +958,7 @@ def list_schedules():
                     "preferred_contact": r[13] if len(r) > 13 and r[13] else "whatsapp",
                 }
             )
+        result.sort(key=lambda x: x["id"], reverse=True)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
