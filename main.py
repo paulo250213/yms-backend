@@ -1,9 +1,11 @@
 import os
 import smtplib
+import secrets
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import psycopg2
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
@@ -18,6 +20,24 @@ SMTP_EMAIL = os.getenv("SMTP_EMAIL")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL")
 APP_URL = os.getenv("APP_URL", "https://seu-app.onrender.com")
+
+# Configurações de Login do Administrador
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "diniz2026")
+
+security = HTTPBasic()
+
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
+    correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Acesso negado. Credenciais administrativas inválidas.",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 
 def send_email_notification(schedule_data: dict):
@@ -132,7 +152,7 @@ class StatusUpdateRequest(BaseModel):
     status: str
 
 
-# --- ROTA PARA DISPONIBILIZAR O DOWNLOAD DO MANUAL EM PDF ---
+# --- DOWNLOAD DO MANUAL EM PDF (PÚBLICO) ---
 @app.get("/manual.pdf")
 def get_manual():
     pdf_path = "manual.pdf"
@@ -144,7 +164,7 @@ def get_manual():
         raise HTTPException(status_code=404, detail="Manual em PDF não encontrado no servidor.")
 
 
-# --- TELA DE FORMULÁRIO (HOME) ---
+# --- TELA DE FORMULÁRIO DO SOLICITANTE (PÚBLICO) ---
 @app.get("/", response_class=HTMLResponse)
 def get_form():
     return """
@@ -454,12 +474,9 @@ def get_form():
                     
                     if (res.ok) {
                         msgDiv.className = 'message success';
-                        msgDiv.innerHTML = `Solicitação enviada com sucesso!<br>Senha gerada: <strong>${randomCode}</strong><br>Redirecionando para o painel...`;
+                        msgDiv.innerHTML = `✅ Solicitação enviada com sucesso!<br>Sua pré-senha é: <strong>${randomCode}</strong><br>Aguarde a confirmação pelo contato informado.`;
                         msgDiv.style.display = 'block';
-                        
-                        setTimeout(() => {
-                            window.location.href = '/agendamentos';
-                        }, 2000);
+                        document.getElementById('scheduleForm').reset();
                     } else {
                         msgDiv.className = 'message error';
                         msgDiv.innerText = data.detail || 'Erro ao realizar agendamento.';
@@ -477,9 +494,9 @@ def get_form():
     """
 
 
-# --- TELA DE CONSULTA E APROVAÇÃO DE AGENDAMENTOS ---
+# --- TELA DE GESTÃO DE AGENDAMENTOS (RESTRITA A ADMINISTRADORES) ---
 @app.get("/agendamentos", response_class=HTMLResponse)
-def list_schedules_page():
+def list_schedules_page(username: str = Depends(get_current_username)):
     return """
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -652,7 +669,7 @@ def list_schedules_page():
                 </div>
                 <div class="btn-group">
                     <button class="btn btn-pdf" onclick="window.print()">📄 Exportar PDF / Imprimir</button>
-                    <a href="/" class="btn btn-new">➕ Novo Agendamento</a>
+                    <a href="/" target="_blank" class="btn btn-new">➕ Novo Agendamento</a>
                 </div>
             </div>
 
@@ -707,6 +724,11 @@ def list_schedules_page():
             async function loadSchedules() {
                 try {
                     const res = await fetch('/api/schedules');
+                    if (res.status === 401) {
+                        alert('Sessão expirada ou não autorizada.');
+                        window.location.reload();
+                        return;
+                    }
                     allSchedules = await res.json();
                     renderTable(allSchedules);
                 } catch (err) {
@@ -843,7 +865,7 @@ def list_schedules_page():
     """
 
 
-# --- API PARA SALVAR AGENDAMENTO ---
+# --- API PARA SALVAR AGENDAMENTO (PÚBLICO) ---
 @app.post("/api/schedule")
 def create_schedule(req: ScheduleRequest):
     try:
@@ -886,9 +908,9 @@ def create_schedule(req: ScheduleRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- API PARA ALTERAR STATUS ---
+# --- API PARA ALTERAR STATUS (ADMINISTRADOR) ---
 @app.patch("/api/schedule/{schedule_id}/status")
-def update_schedule_status(schedule_id: int, req: StatusUpdateRequest):
+def update_schedule_status(schedule_id: int, req: StatusUpdateRequest, username: str = Depends(get_current_username)):
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
@@ -904,9 +926,9 @@ def update_schedule_status(schedule_id: int, req: StatusUpdateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- API PARA EXCLUIR AGENDAMENTO ---
+# --- API PARA EXCLUIR AGENDAMENTO (ADMINISTRADOR) ---
 @app.delete("/api/schedule/{schedule_id}")
-def delete_schedule(schedule_id: int):
+def delete_schedule(schedule_id: int, username: str = Depends(get_current_username)):
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
@@ -919,9 +941,9 @@ def delete_schedule(schedule_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- API PARA LISTAR OS AGENDAMENTOS EM JSON ---
+# --- API PARA LISTAR OS AGENDAMENTOS (ADMINISTRADOR) ---
 @app.get("/api/schedules")
-def list_schedules():
+def list_schedules(username: str = Depends(get_current_username)):
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
@@ -931,7 +953,7 @@ def list_schedules():
                    cargo_type, pallet_quantity, dock_id, TO_CHAR(schedule_time, 'YYYY-MM-DD'), 
                    access_code, status, phone, email, preferred_contact
             FROM schedules
-            ORDER BY supplier_name ASC;
+            ORDER BY id DESC;
             """
         )
         rows = cur.fetchall()
@@ -958,7 +980,6 @@ def list_schedules():
                     "preferred_contact": r[13] if len(r) > 13 and r[13] else "whatsapp",
                 }
             )
-        result.sort(key=lambda x: x["id"], reverse=True)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
