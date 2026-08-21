@@ -765,8 +765,9 @@ def list_schedules_page(username: str = Depends(get_current_username)):
                         const textApprove = encodeURIComponent(`Olá! Seu agendamento para o dia ${row.schedule_time} na Diniz Alimentos foi APROVADO. Sua pré-senha é: ${row.access_code}.`);
                         const textReject = encodeURIComponent(`Olá! Infelizmente seu agendamento para o dia ${row.schedule_time} não pôde ser aprovado. Por favor, acesse nosso site e faça uma nova solicitação.`);
                         
-                        btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" rel="noopener noreferrer" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Whats (Aprovar)</a>`;
-                        btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" rel="noopener noreferrer" onclick="updateStatus(${row.id}, 'Recusado')">❌ Whats (Recusar)</a>`;
+                        // target="_blank" garante que o painel continue aberto na tela atual
+                        btnApprove = `<a class="btn-action btn-app" href="https://wa.me/${phoneNum}?text=${textApprove}" target="_blank" rel="noopener noreferrer" onclick="updateStatus(${row.id}, 'Aprovado')">🟢 Aprovar</a>`;
+                        btnReject = `<a class="btn-action btn-rej" href="https://wa.me/${phoneNum}?text=${textReject}" target="_blank" rel="noopener noreferrer" onclick="updateStatus(${row.id}, 'Recusado')">❌ Recusar</a>`;
                     } else if (contactPref === 'email' || emailAddr) {
                         contactDisplay = `✉️ ${emailAddr}`;
                         const emailSubjApprove = encodeURIComponent(`Agendamento Aprovado - Diniz Alimentos`);
@@ -775,8 +776,8 @@ def list_schedules_page(username: str = Depends(get_current_username)):
                         const emailSubjReject = encodeURIComponent(`Solicitação de Agendamento Não Aprovada - Diniz Alimentos`);
                         const emailBodyReject = encodeURIComponent(`Olá,\\n\\nSua solicitação de agendamento para o dia ${row.schedule_time} não pôde ser aprovada.\\n\\nPor favor, acesse nosso site e realize uma nova solicitação selecionando outra data.\\n\\nAtenciosamente,\\nDiniz Alimentos`);
 
-                        btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ E-mail (Aprovar)</a>`;
-                        btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" onclick="updateStatus(${row.id}, 'Recusado')">✉️ E-mail (Recusar)</a>`;
+                        btnApprove = `<a class="btn-action btn-app" href="mailto:${emailAddr}?subject=${emailSubjApprove}&body=${emailBodyApprove}" target="_blank" rel="noopener noreferrer" onclick="updateStatus(${row.id}, 'Aprovado')">✉️ Aprovar</a>`;
+                        btnReject = `<a class="btn-action btn-rej" href="mailto:${emailAddr}?subject=${emailSubjReject}&body=${emailBodyReject}" target="_blank" rel="noopener noreferrer" onclick="updateStatus(${row.id}, 'Recusado')">✉️ Recusar</a>`;
                     }
 
                     tr.innerHTML = `
